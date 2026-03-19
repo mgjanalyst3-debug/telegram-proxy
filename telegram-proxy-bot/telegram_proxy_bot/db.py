@@ -38,6 +38,8 @@ def init_db() -> None:
                 username TEXT,
                 first_name TEXT,
                 trial_used INTEGER NOT NULL DEFAULT 0,
+                is_banned INTEGER NOT NULL DEFAULT 0,
+                admin_note TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             );
@@ -100,6 +102,8 @@ def init_db() -> None:
         )
 
         add_column_if_missing(conn, "users", "trial_used INTEGER NOT NULL DEFAULT 0", "trial_used")
+        add_column_if_missing(conn, "users", "is_banned INTEGER NOT NULL DEFAULT 0", "is_banned")
+        add_column_if_missing(conn, "users", "admin_note TEXT NOT NULL DEFAULT ''", "admin_note")
 
         add_column_if_missing(conn, "subscriptions", "proxy_type TEXT NOT NULL DEFAULT 'socks5'", "proxy_type")
         add_column_if_missing(conn, "subscriptions", "host TEXT NOT NULL DEFAULT ''", "host")

@@ -5,6 +5,7 @@ from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 
 from ..config import settings
+from ..db import db
 from ..handlers.common import answer_screen
 from ..repositories.audit import write_audit
 from ..repositories.users import upsert_user
@@ -22,11 +23,13 @@ from ..services.subscriptions import (
     expire_user_subscription,
     get_active_subscription,
     issue_or_extend_subscription,
+    list_latest_subscription_snapshots,
     reissue_subscription_credentials,
     reset_trial_for_user,
 )
+from ..services.server_status import get_server_status
 from ..ui.keyboards import admin_keyboard
-from ..ui.texts import admin_commands_text, admin_panel_text
+from ..ui.texts import admin_commands_text, admin_panel_text, server_status_text
 from ..utils import format_dt
 
 router = Router(name="admin")
@@ -56,6 +59,13 @@ async def _admin_only(message_or_callback: Message | CallbackQuery) -> bool:
     return False
 
 
+def _parse_user_id_arg(message: Message) -> int | None:
+    args = _parse_args(message, 2)
+    if not args or not args[0].isdigit():
+        return None
+    return int(args[0])
+
+
 @router.message(Command("admin"))
 async def cmd_admin(message: Message) -> None:
     if not await _admin_only(message):
@@ -75,6 +85,19 @@ async def cmd_grant_30(message: Message) -> None:
     sub = issue_or_extend_subscription(target_user_id, plan="30 дней", days=30)
     write_audit(target_user_id, sub.username, "grant_30", "выдано администратором бесплатно")
     await message.answer(f"Доступ продлен пользователю {target_user_id} до {format_dt(sub.expires_at)}")
+
+
+@router.message(Command("grant_trial"))
+async def cmd_grant_trial(message: Message) -> None:
+    if not await _admin_only(message):
+        return
+    target_user_id = _parse_user_id_arg(message)
+    if target_user_id is None:
+        await message.answer("Использование: /grant_trial <user_id>")
+        return
+    sub = issue_or_extend_subscription(target_user_id, plan="пробная подписка (ручная)", hours=settings.trial_hours)
+    write_audit(target_user_id, sub.username, "grant_trial", "выдан trial администратором")
+    await message.answer(f"Пробный доступ выдан пользователю {target_user_id} до {format_dt(sub.expires_at)}")
 
 
 @router.message(Command("extend"))
@@ -124,6 +147,11 @@ async def cmd_expire_sub(message: Message) -> None:
     await message.answer(f"Подписка пользователя {target_user_id} завершена.")
 
 
+@router.message(Command("expire"))
+async def cmd_expire(message: Message) -> None:
+    await cmd_expire_sub(message)
+
+
 @router.message(Command("reissue"))
 async def cmd_reissue(message: Message) -> None:
     if not await _admin_only(message):
@@ -139,6 +167,347 @@ async def cmd_reissue(message: Message) -> None:
         return
     write_audit(target_user_id, sub.username, "reissue", "пароль перевыпущен администратором")
     await message.answer(f"Пользователю {target_user_id} перевыпущен новый персональный доступ.")
+
+
+@router.message(Command("delete_sub"))
+async def cmd_delete_sub(message: Message) -> None:
+    if not await _admin_only(message):
+        return
+    target_user_id = _parse_user_id_arg(message)
+    if target_user_id is None:
+        await message.answer("Использование: /delete_sub <user_id>")
+        return
+    with db() as conn:
+        deleted = conn.execute("DELETE FROM subscriptions WHERE user_id=?", (target_user_id,)).rowcount
+    write_audit(target_user_id, "-", "delete_sub", f"удалено подписок: {deleted}")
+    await message.answer(f"Подписки пользователя {target_user_id} удалены: <code>{deleted}</code>.")
+
+
+@router.message(Command("set_limit"))
+async def cmd_set_limit(message: Message) -> None:
+    if not await _admin_only(message):
+        return
+    args = _parse_args(message, 3)
+    if not args or not args[0].isdigit() or not args[1].isdigit():
+        await message.answer("Использование: /set_limit <user_id> <n>")
+        return
+    target_user_id = int(args[0])
+    new_limit = max(1, min(100, int(args[1])))
+    with db() as conn:
+        updated = conn.execute(
+            "UPDATE subscriptions SET connections_limit=? WHERE user_id=? AND status='active'",
+            (new_limit, target_user_id),
+        ).rowcount
+    write_audit(target_user_id, "-", "set_limit", f"connections_limit={new_limit}, обновлено={updated}")
+    await message.answer(f"Лимит подключений обновлен до <code>{new_limit}</code>. Изменено записей: <code>{updated}</code>.")
+
+
+@router.message(Command("set_devices"))
+async def cmd_set_devices(message: Message) -> None:
+    if not await _admin_only(message):
+        return
+    args = _parse_args(message, 3)
+    if not args or not args[0].isdigit() or not args[1].isdigit():
+        await message.answer("Использование: /set_devices <user_id> <n>")
+        return
+    target_user_id = int(args[0])
+    new_limit = max(1, min(100, int(args[1])))
+    with db() as conn:
+        updated = conn.execute(
+            "UPDATE subscriptions SET devices_limit=? WHERE user_id=? AND status='active'",
+            (new_limit, target_user_id),
+        ).rowcount
+    write_audit(target_user_id, "-", "set_devices", f"devices_limit={new_limit}, обновлено={updated}")
+    await message.answer(f"Лимит устройств обновлен до <code>{new_limit}</code>. Изменено записей: <code>{updated}</code>.")
+
+
+@router.message(Command("payments"))
+async def cmd_payments(message: Message) -> None:
+    if not await _admin_only(message):
+        return
+    target_user_id = _parse_user_id_arg(message)
+    if target_user_id is None:
+        await message.answer("Использование: /payments <user_id>")
+        return
+    with db() as conn:
+        rows = conn.execute(
+            "SELECT id, amount, currency, status, payload, created_at FROM payments WHERE user_id=? ORDER BY id DESC LIMIT 20",
+            (target_user_id,),
+        ).fetchall()
+    if not rows:
+        await message.answer("У пользователя нет платежей.")
+        return
+    lines = ["<b>💳 История платежей</b>"]
+    for row in rows:
+        lines.append(
+            f"#{row['id']} • <code>{row['amount']} {row['currency']}</code> • "
+            f"<code>{row['status']}</code> • {format_dt(row['created_at'])} • <code>{row['payload']}</code>"
+        )
+    await message.answer("\n".join(lines))
+
+
+@router.message(Command("mark_paid"))
+async def cmd_mark_paid(message: Message) -> None:
+    if not await _admin_only(message):
+        return
+    args = _parse_args(message, 3)
+    if not args or not args[0].isdigit() or not args[1].isdigit():
+        await message.answer("Использование: /mark_paid <user_id> <days>")
+        return
+    target_user_id = int(args[0])
+    days = int(args[1])
+    sub = issue_or_extend_subscription(target_user_id, plan="ручная активация", days=days)
+    with db() as conn:
+        conn.execute(
+            """
+            INSERT INTO payments (user_id, payload, amount, currency, status, fulfilled, paid_at, created_at, updated_at)
+            VALUES (?, ?, 0, 'XTR', 'paid', 1, datetime('now'), datetime('now'), datetime('now'))
+            """,
+            (target_user_id, f"manual_paid_{target_user_id}_{sub.row_id}"),
+        )
+    write_audit(target_user_id, sub.username, "mark_paid", f"ручная активация на {days} дней")
+    await message.answer(f"Подписка активирована вручную до {format_dt(sub.expires_at)}.")
+
+
+@router.message(Command("refund"))
+async def cmd_refund(message: Message) -> None:
+    if not await _admin_only(message):
+        return
+    args = _parse_args(message, 3)
+    if not args or not args[0].isdigit() or not args[1].isdigit():
+        await message.answer("Использование: /refund <user_id> <payment_id>")
+        return
+    target_user_id = int(args[0])
+    payment_id = int(args[1])
+    with db() as conn:
+        updated = conn.execute(
+            "UPDATE payments SET status='refunded', refunded_at=datetime('now'), updated_at=datetime('now') WHERE id=? AND user_id=?",
+            (payment_id, target_user_id),
+        ).rowcount
+    if not updated:
+        await message.answer("Платеж не найден.")
+        return
+    write_audit(target_user_id, "-", "refund", f"payment_id={payment_id}")
+    await message.answer(f"Платеж #{payment_id} отмечен как refunded.")
+
+
+@router.message(Command("user"))
+async def cmd_user(message: Message) -> None:
+    if not await _admin_only(message):
+        return
+    target_user_id = _parse_user_id_arg(message)
+    if target_user_id is None:
+        await message.answer("Использование: /user <user_id>")
+        return
+    with db() as conn:
+        user = conn.execute("SELECT * FROM users WHERE user_id=?", (target_user_id,)).fetchone()
+    sub = get_active_subscription(target_user_id)
+    if not user:
+        await message.answer("Пользователь не найден в БД.")
+        return
+    lines = [
+        "<b>👤 Карточка пользователя</b>",
+        f"ID: <code>{user['user_id']}</code>",
+        f"Username: <code>{user['username'] or '-'}</code>",
+        f"Имя: <code>{user['first_name'] or '-'}</code>",
+        f"Trial used: <code>{'да' if user['trial_used'] else 'нет'}</code>",
+        f"Бан: <code>{'да' if user['is_banned'] else 'нет'}</code>",
+        f"Заметка: <code>{user['admin_note'] or '-'}</code>",
+        f"Создан: <code>{format_dt(user['created_at'])}</code>",
+    ]
+    if sub:
+        lines.extend(
+            [
+                "",
+                "<b>Активная подписка</b>",
+                f"Логин: <code>{sub.username}</code>",
+                f"Доступ до: <code>{format_dt(sub.expires_at)}</code>",
+                f"Лимиты: <code>{sub.connections_limit}</code>/<code>{sub.devices_limit}</code>",
+            ]
+        )
+    await message.answer("\n".join(lines))
+
+
+@router.message(Command("ban"))
+async def cmd_ban(message: Message) -> None:
+    if not await _admin_only(message):
+        return
+    target_user_id = _parse_user_id_arg(message)
+    if target_user_id is None:
+        await message.answer("Использование: /ban <user_id>")
+        return
+    with db() as conn:
+        conn.execute("UPDATE users SET is_banned=1, updated_at=datetime('now') WHERE user_id=?", (target_user_id,))
+    write_audit(target_user_id, "-", "ban", "пользователь заблокирован")
+    await message.answer(f"Пользователь {target_user_id} заблокирован.")
+
+
+@router.message(Command("unban"))
+async def cmd_unban(message: Message) -> None:
+    if not await _admin_only(message):
+        return
+    target_user_id = _parse_user_id_arg(message)
+    if target_user_id is None:
+        await message.answer("Использование: /unban <user_id>")
+        return
+    with db() as conn:
+        conn.execute("UPDATE users SET is_banned=0, updated_at=datetime('now') WHERE user_id=?", (target_user_id,))
+    write_audit(target_user_id, "-", "unban", "блокировка снята")
+    await message.answer(f"Пользователь {target_user_id} разблокирован.")
+
+
+@router.message(Command("note"))
+async def cmd_note(message: Message) -> None:
+    if not await _admin_only(message):
+        return
+    parts = (message.text or "").split(maxsplit=2)
+    if len(parts) < 3 or not parts[1].isdigit():
+        await message.answer("Использование: /note <user_id> <text>")
+        return
+    target_user_id = int(parts[1])
+    note = parts[2].strip()
+    with db() as conn:
+        conn.execute("UPDATE users SET admin_note=?, updated_at=datetime('now') WHERE user_id=?", (note, target_user_id))
+    write_audit(target_user_id, "-", "note", note)
+    await message.answer(f"Заметка для {target_user_id} сохранена.")
+
+
+@router.message(Command("users_active"))
+async def cmd_users_active(message: Message) -> None:
+    if not await _admin_only(message):
+        return
+    with db() as conn:
+        rows = conn.execute(
+            """
+            SELECT user_id, username, expires_at FROM subscriptions
+            WHERE status='active' AND id IN (
+                SELECT MAX(id) FROM subscriptions WHERE status='active' GROUP BY user_id
+            )
+            ORDER BY expires_at ASC LIMIT 50
+            """
+        ).fetchall()
+    if not rows:
+        await message.answer("Активных пользователей нет.")
+        return
+    text = ["<b>✅ Активные пользователи</b>"]
+    text.extend(
+        f"<code>{row['user_id']}</code> • <code>{row['username']}</code> • до {format_dt(row['expires_at'])}" for row in rows
+    )
+    await message.answer("\n".join(text))
+
+
+@router.message(Command("users_expired"))
+async def cmd_users_expired(message: Message) -> None:
+    if not await _admin_only(message):
+        return
+    with db() as conn:
+        rows = conn.execute(
+            """
+            SELECT user_id, username, expires_at FROM subscriptions
+            WHERE status='expired' AND id IN (
+                SELECT MAX(id) FROM subscriptions GROUP BY user_id
+            )
+            ORDER BY expires_at DESC LIMIT 50
+            """
+        ).fetchall()
+    if not rows:
+        await message.answer("Истекших пользователей нет.")
+        return
+    text = ["<b>⌛ Истекшие пользователи</b>"]
+    text.extend(
+        f"<code>{row['user_id']}</code> • <code>{row['username']}</code> • истекла {format_dt(row['expires_at'])}" for row in rows
+    )
+    await message.answer("\n".join(text))
+
+
+@router.message(Command("broadcast"))
+async def cmd_broadcast(message: Message, bot: Bot) -> None:
+    if not await _admin_only(message):
+        return
+    parts = (message.text or "").split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer("Использование: /broadcast <text>")
+        return
+    text = parts[1]
+    with db() as conn:
+        user_ids = [row["user_id"] for row in conn.execute("SELECT user_id FROM users").fetchall()]
+    sent = 0
+    for user_id in user_ids:
+        try:
+            await bot.send_message(user_id, text)
+            sent += 1
+        except Exception:
+            continue
+    await message.answer(f"Рассылка завершена. Успешно: <code>{sent}</code> / <code>{len(user_ids)}</code>.")
+
+
+@router.message(Command("broadcast_active"))
+async def cmd_broadcast_active(message: Message, bot: Bot) -> None:
+    if not await _admin_only(message):
+        return
+    parts = (message.text or "").split(maxsplit=1)
+    if len(parts) < 2:
+        await message.answer("Использование: /broadcast_active <text>")
+        return
+    text = parts[1]
+    with db() as conn:
+        user_ids = [row["user_id"] for row in conn.execute("SELECT DISTINCT user_id FROM subscriptions WHERE status='active'").fetchall()]
+    sent = 0
+    for user_id in user_ids:
+        try:
+            await bot.send_message(user_id, text)
+            sent += 1
+        except Exception:
+            continue
+    await message.answer(f"Рассылка по активным завершена. Успешно: <code>{sent}</code> / <code>{len(user_ids)}</code>.")
+
+
+@router.message(Command("stats"))
+async def cmd_stats(message: Message) -> None:
+    if not await _admin_only(message):
+        return
+    await message.answer(get_admin_stats_text())
+
+
+@router.message(Command("health"))
+async def cmd_health(message: Message, bot: Bot) -> None:
+    if not await _admin_only(message):
+        return
+    db_ok = True
+    try:
+        with db() as conn:
+            conn.execute("SELECT 1").fetchone()
+    except Exception:
+        db_ok = False
+    stars_ok = True
+    try:
+        await bot.get_my_star_balance()
+    except Exception:
+        stars_ok = False
+    latest = list_latest_subscription_snapshots(1)
+    proxy_line = "нет данных"
+    if latest:
+        status = await get_server_status(latest[0])
+        proxy_line = server_status_text(status).splitlines()[2].replace("<b>Подключение:</b> ", "")
+    await message.answer(
+        "<b>🩺 Health-check</b>\n\n"
+        f"Бот: <code>ok</code>\n"
+        f"БД: <code>{'ok' if db_ok else 'fail'}</code>\n"
+        f"Платежи (Stars API): <code>{'ok' if stars_ok else 'fail'}</code>\n"
+        f"Прокси: <code>{proxy_line}</code>"
+    )
+
+
+@router.message(Command("whoami"))
+async def cmd_whoami(message: Message) -> None:
+    if not await _admin_only(message):
+        return
+    await message.answer(
+        "<b>👤 Кто я</b>\n\n"
+        f"Ваш ID: <code>{message.from_user.id}</code>\n"
+        f"Username: <code>@{message.from_user.username or '-'}</code>\n"
+        f"Админ: <code>{'да' if is_admin(message.from_user.id) else 'нет'}</code>"
+    )
 
 
 @router.message(Command("star_balance"))
