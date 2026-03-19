@@ -71,7 +71,22 @@ async def handle_trial(target: Message | CallbackQuery, user: User) -> None:
             menu_keyboard(user.id),
         )
         return
+    mark_trial_used(user.id)
+    write_audit(user.id, sub.username, "trial_issued", f"выдан пробный доступ на {settings.trial_hours} ч")
+    await answer_screen(target, trial_activated_text(sub), access_keyboard(sub))
 
+
+async def send_access(target: Message | CallbackQuery, user_id: int) -> None:
+    sub = get_active_subscription(user_id)
+    if not sub:
+        await answer_screen(target, "Сейчас у вас нет активной подписки.", back_keyboard())
+        return
+    await answer_screen(target, access_text(sub), access_keyboard(sub))
+
+
+async def send_status(target: Message | CallbackQuery, user_id: int) -> None:
+    sub = get_active_subscription(user_id)
+    if not sub:
         await answer_screen(target, "Сейчас у вас нет активной подписки.", back_keyboard())
         return
     await answer_screen(target, status_text(sub), back_keyboard())
