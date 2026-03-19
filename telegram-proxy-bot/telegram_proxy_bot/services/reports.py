@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import io
+from openpyxl import Workbook
 
 from aiogram.types import BufferedInputFile
 
@@ -157,12 +158,18 @@ def format_audit_text(limit: int = 20) -> str:
 
 
 
-def csv_file_from_query(filename: str, headers: list[str], query: str) -> BufferedInputFile:
+def xlsx_file_from_query(filename: str, headers: list[str], query: str) -> BufferedInputFile:
     with db() as conn:
         rows = conn.execute(query).fetchall()
-    buf = io.StringIO()
-    writer = csv.writer(buf)
-    writer.writerow(headers)
+
+    workbook = Workbook()
+    worksheet = workbook.active
+    worksheet.append(headers)
+
     for row in rows:
-        writer.writerow([row[h] for h in headers])
-    return BufferedInputFile(buf.getvalue().encode("utf-8-sig"), filename=filename)
+        worksheet.append([row[h] for h in headers])
+
+    output = io.BytesIO()
+    workbook.save(output)
+    output.seek(0)
+    return BufferedInputFile(output.getvalue(), filename=filename)
