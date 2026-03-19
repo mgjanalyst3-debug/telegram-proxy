@@ -11,6 +11,7 @@ from ..handlers.common import answer_screen, show_menu
 from ..repositories.audit import write_audit
 from ..repositories.users import has_used_trial, mark_trial_used, upsert_user
 from ..services.payments import send_stars_invoice
+from ..services.server_status import get_server_status
 from ..services.subscriptions import get_active_subscription, issue_or_extend_subscription
 from ..ui.keyboards import access_keyboard, back_keyboard, buy_keyboard, menu_keyboard
 from ..ui.texts import (
@@ -20,6 +21,7 @@ from ..ui.texts import (
     paysupport_text,
     setup_text,
     start_text,
+    server_status_text,
     status_text,
     support_screen_text,
     trial_activated_text,
@@ -157,6 +159,20 @@ async def on_status(callback: CallbackQuery) -> None:
 @router.callback_query(F.data == "setup")
 async def on_setup(callback: CallbackQuery) -> None:
     await answer_screen(callback, setup_text(), back_keyboard())
+
+
+@router.callback_query(F.data == "server_status")
+async def on_server_status(callback: CallbackQuery) -> None:
+    sub = get_active_subscription(callback.from_user.id)
+    if not sub:
+        await answer_screen(
+            callback,
+            "Сейчас у вас нет активного доступа. Активируйте пробную подписку или оформите подписку, чтобы проверить ваш конкретный прокси.",
+            back_keyboard(),
+        )
+        return
+    status = await get_server_status(sub)
+    await answer_screen(callback, server_status_text(status), back_keyboard())
 
 
 @router.callback_query(F.data == "faq")
