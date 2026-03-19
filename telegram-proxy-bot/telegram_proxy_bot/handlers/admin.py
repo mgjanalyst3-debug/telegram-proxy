@@ -11,7 +11,7 @@ from ..repositories.audit import write_audit
 from ..repositories.users import upsert_user
 from ..services.payments import get_star_balance_text, get_star_transactions_text
 from ..services.reports import (
-    csv_file_from_query,
+    xlsx_file_from_query,
     format_active_subscriptions_text,
     format_audit_text,
     format_linux_users_text,
@@ -33,7 +33,6 @@ from ..ui.texts import admin_commands_text, admin_panel_text, server_status_text
 from ..utils import format_dt
 
 router = Router(name="admin")
-
 
 
 def is_admin(user_id: int) -> bool:
@@ -584,18 +583,18 @@ async def on_admin_audit(callback: CallbackQuery) -> None:
     await answer_screen(callback, format_audit_text(), admin_keyboard())
 
 
-async def _send_csv(callback: CallbackQuery, filename: str, headers: list[str], query: str) -> None:
+async def _send_xlsx(callback: CallbackQuery, filename: str, headers: list[str], query: str) -> None:
     if not await _admin_only(callback):
         return
-    await callback.message.answer_document(csv_file_from_query(filename, headers, query), caption=f"Файл {filename} готов.")
+    await callback.message.answer_document(xlsx_file_from_query(filename, headers, query), caption=f"Файл {filename} готов.")
     await callback.answer()
 
 
 @router.callback_query(F.data == "export_users")
 async def on_export_users(callback: CallbackQuery) -> None:
-    await _send_csv(
+    await _send_xlsx(
         callback,
-        "users.csv",
+        "users.xlsx",
         ["user_id", "username", "first_name", "trial_used", "created_at", "updated_at"],
         "SELECT user_id, username, first_name, trial_used, created_at, updated_at FROM users ORDER BY user_id DESC",
     )
@@ -603,9 +602,9 @@ async def on_export_users(callback: CallbackQuery) -> None:
 
 @router.callback_query(F.data == "export_subs")
 async def on_export_subs(callback: CallbackQuery) -> None:
-    await _send_csv(
+    await _send_xlsx(
         callback,
-        "subscriptions.csv",
+        "subscriptions.xlsx",
         [
             "id",
             "user_id",
@@ -627,9 +626,9 @@ async def on_export_subs(callback: CallbackQuery) -> None:
 
 @router.callback_query(F.data == "export_payments")
 async def on_export_payments(callback: CallbackQuery) -> None:
-    await _send_csv(
+    await _send_xlsx(
         callback,
-        "payments.csv",
+        "payments.xlsx",
         [
             "id",
             "user_id",
@@ -649,9 +648,9 @@ async def on_export_payments(callback: CallbackQuery) -> None:
 
 @router.callback_query(F.data == "export_active_subs")
 async def on_export_active_subs(callback: CallbackQuery) -> None:
-    await _send_csv(
+    await _send_xlsx(
         callback,
-        "active_subscriptions.csv",
+        "active_subscriptions.xlsx",
         [
             "id",
             "user_id",
