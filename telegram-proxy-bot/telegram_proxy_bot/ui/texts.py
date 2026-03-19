@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from ..config import settings
 from ..models import Subscription
+from ..services.server_status import ServerStatus
 from ..utils import format_dt, get_socks5_url
 
 
@@ -21,7 +22,7 @@ def welcome_text() -> str:
         f"• оформить подписку на {settings.paid_days} дней\n"
         "• быстро продлить доступ\n"
         "• получить помощь по подключению\n\n"
-        "Нажмите <b>Start</b>, чтобы начать."
+        "Получите постоянный доступ уже сейчас."
     )
 
 
@@ -120,6 +121,50 @@ def access_text(sub: Subscription) -> str:
         f"<b>Быстрая ссылка:</b>\n{get_socks5_url(sub)}\n\n"
         "Чтобы не светить данные в сообщении, логин и пароль можно открыть отдельными кнопками ниже."
     )
+
+def _format_ms(value: float | None) -> str:
+    if value is None:
+        return "нет данных"
+    return f"{int(round(value))} мс"
+
+
+def server_status_text(status: ServerStatus) -> str:
+    latency = status.tcp_latency_ms if status.tcp_latency_ms is not None else status.ping_ms
+    if not status.tcp_available or status.auth_available is False:
+        header = "🔴 <b>Статус сервера</b>"
+        comment = (
+            "Сейчас есть временные проблемы с подключением.\n"
+            "Мы уже проверяем сервер. Попробуйте чуть позже."
+        )
+        server_line = "офлайн"
+        conn_line = "недоступно"
+    elif latency is not None and latency > 150:
+        header = "🟠 <b>Статус сервера</b>"
+        comment = (
+            "Сервер отвечает, но есть повышенная задержка.\n"
+            "Подключение может работать медленнее обычного."
+        )
+        server_line = "онлайн"
+        conn_line = "доступно"
+    else:
+        header = "🟢 <b>Статус сервера</b>"
+        comment = "Сейчас сервис работает нормально."
+        server_line = "онлайн"
+        conn_line = "доступно"
+
+    checked_at = status.checked_at.astimezone(settings.display_tz).strftime("%d.%m.%Y %H:%M")
+    return (
+        f"{header}\n\n"
+        f"<b>Сервер:</b> {server_line}\n"
+        f"<b>Подключение:</b> {conn_line}\n"
+        f"<b>Авторизация:</b> {'успешно' if status.auth_available else ('ошибка' if status.auth_available is False else 'нет данных')}\n"
+        f"<b>Ping:</b> {_format_ms(status.ping_ms)}\n"
+        f"<b>Задержка (TCP):</b> {_format_ms(status.tcp_latency_ms)}\n"
+        f"<b>Порт SOCKS5:</b> <code>{status.host}:{status.port}</code>\n"
+        f"<b>Последняя проверка:</b> <code>{checked_at}</code>\n\n"
+        f"{comment}"
+    )
+
 
 
 
