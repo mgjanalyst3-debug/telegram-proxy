@@ -4,7 +4,7 @@ import logging
 
 from aiogram import Bot, F, Router
 from aiogram.filters import Command, CommandStart
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, Message, User
 
 from ..config import settings
 from ..handlers.common import answer_screen, show_menu
@@ -29,37 +29,36 @@ logger = logging.getLogger(__name__)
 router = Router(name="user")
 
 
-async def handle_trial(message: Message) -> None:
-    upsert_user(message.from_user.id, message.from_user.username, message.from_user.first_name)
-    current = get_active_subscription(message.from_user.id)
+async def handle_trial(target: Message | CallbackQuery, user: User) -> None:
+    upsert_user(user.id, user.username, user.first_name)
+    current = get_active_subscription(user.id)
     if current:
-        await message.answer(
+        await answer_screen(
+            target,
             "У вас уже есть активный доступ. Откройте раздел «📦 Мой доступ».",
-            reply_markup=menu_keyboard(message.from_user.id),
+            menu_keyboard(user.id),
         )
         return
-    if has_used_trial(message.from_user.id):
-        await message.answer(
+    if has_used_trial(user.id):
+        await answer_screen(
+            target,
             "Пробная подписка уже была использована. Вы можете перейти к оплате и сразу активировать подписку.",
-            reply_markup=menu_keyboard(message.from_user.id),
+            menu_keyboard(user.id),
         )
         return
     try:
-        sub = issue_or_extend_subscription(message.from_user.id, plan="пробная подписка", hours=settings.trial_hours)
+        sub = issue_or_extend_subscription(user.id, plan="пробная подписка", hours=settings.trial_hours)
     except Exception as exc:
         logger.exception("Не удалось выдать trial: %s", exc)
-        await message.answer(
+        await answer_screen(
+            target,
             "Не удалось активировать пробный доступ. Попробуйте еще раз или напишите в поддержку.",
-            reply_markup=menu_keyboard(message.from_user.id),
+            menu_keyboard(user.id),
         )
         return
-    mark_trial_used(message.from_user.id)
-    write_audit(message.from_user.id, sub.username, "trial_issued", f"пробная подписка до {sub.expires_at}")
-    await message.answer(
-        trial_activated_text(sub),
-        reply_markup=access_keyboard(sub),
-        disable_web_page_preview=True,
-    )
+    mark_trial_used(user.id)
+    write_audit(user.id, sub.username, "trial_issued", f"пробная подписка до {sub.expires_at}")
+    await answer_screen(target, trial_activated_text(sub), access_keyboard(sub))
 
 
 async def send_access(target: Message | CallbackQuery, user_id: int) -> None:
@@ -96,7 +95,7 @@ async def cmd_help(message: Message) -> None:
 
 @router.message(Command("trial"))
 async def cmd_trial(message: Message) -> None:
-    await handle_trial(message)
+    await handle_trial(message, message.from_user)
 
 
 @router.message(Command("buy"))
@@ -131,7 +130,7 @@ async def on_menu(callback: CallbackQuery) -> None:
 @router.callback_query(F.data == "trial")
 async def on_trial(callback: CallbackQuery) -> None:
     await callback.answer()
-    await handle_trial(callback.message)
+    await handle_trial(callback, callback.from_user)
 
 
 @router.callback_query(F.data == "buy")
