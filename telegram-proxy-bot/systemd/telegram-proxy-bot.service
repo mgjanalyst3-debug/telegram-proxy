@@ -1,0 +1,20 @@
+[Unit]
+Description=telegram-proxy-bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# ВАЖНО: если LINUX_PROXY_USERS_ENABLED=1, процессу нужны права на useradd/passwd/chpasswd.
+# Самый простой вариант — запускать сервис от root.
+User=root
+WorkingDirectory=/opt/telegram-proxy-bot
+Environment=BOT_ENV_FILE=/opt/telegram-proxy-bot/.env
+ExecStart=/usr/bin/python3 -m telegram_proxy_bot
+Restart=always
+RestartSec=5
+TimeoutStopSec=30
+KillSignal=SIGINT
+
+[Install]
+WantedBy=multi-user.target
