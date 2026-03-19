@@ -67,6 +67,7 @@ def menu_keyboard(user_id: int | None = None) -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="📊 Статус подписки", callback_data="status"),
             InlineKeyboardButton(text="🛠 Как подключить", callback_data="setup"),
         ],
+        [InlineKeyboardButton(text="🟢 Статус сервера", callback_data="server_status")],
         [
             InlineKeyboardButton(text="🆘 Поддержка", callback_data="support"),
             InlineKeyboardButton(text="❓ Ответы на вопросы", callback_data="faq"),
