@@ -43,16 +43,17 @@ def admin_keyboard() -> InlineKeyboardMarkup:
                 InlineKeyboardButton(text="🧾 Аудит", callback_data="admin_audit"),
             ],
             [
-                InlineKeyboardButton(text="📤 CSV: пользователи", callback_data="export_users"),
-                InlineKeyboardButton(text="📤 CSV: подписки", callback_data="export_subs"),
+                InlineKeyboardButton(text="📤 XLSX: пользователи", callback_data="export_users"),
+                InlineKeyboardButton(text="📤 XLSX: подписки", callback_data="export_subs"),
             ],
             [
-                InlineKeyboardButton(text="📤 CSV: платежи", callback_data="export_payments"),
-                InlineKeyboardButton(text="📤 CSV: активные", callback_data="export_active_subs"),
+                InlineKeyboardButton(text="📤 XLSX: платежи", callback_data="export_payments"),
+                InlineKeyboardButton(text="📤 XLSX: активные", callback_data="export_active_subs"),
             ],
             [InlineKeyboardButton(text="🏠 В меню", callback_data="menu")],
         ]
     )
+
 
 
 
