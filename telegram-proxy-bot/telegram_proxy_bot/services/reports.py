@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import csv
 import io
-from openpyxl import Workbook
+from html import escape
+from zipfile import ZIP_DEFLATED, ZipFile
 
 from aiogram.types import BufferedInputFile
 
@@ -161,15 +161,71 @@ def format_audit_text(limit: int = 20) -> str:
 def xlsx_file_from_query(filename: str, headers: list[str], query: str) -> BufferedInputFile:
     with db() as conn:
         rows = conn.execute(query).fetchall()
-
-    workbook = Workbook()
-    worksheet = workbook.active
-    worksheet.append(headers)
-
+    table_rows = [headers]
     for row in rows:
-        worksheet.append([row[h] for h in headers])
+        table_rows.append([row[h] for h in headers])
+
+    def _column_name(col_index: int) -> str:
+        name = ""
+        idx = col_index
+        while idx > 0:
+            idx, rem = divmod(idx - 1, 26)
+            name = chr(65 + rem) + name
+        return name
+
+    def _cell_xml(row_idx: int, col_idx: int, value: object) -> str:
+        cell_ref = f"{_column_name(col_idx)}{row_idx}"
+        if value is None:
+            return f'<c r="{cell_ref}"/>'
+        text = escape(str(value))
+        return f'<c r="{cell_ref}" t="inlineStr"><is><t>{text}</t></is></c>'
+
+    sheet_rows_xml = []
+    for row_idx, values in enumerate(table_rows, start=1):
+        cells_xml = "".join(_cell_xml(row_idx, col_idx, value) for col_idx, value in enumerate(values, start=1))
+        sheet_rows_xml.append(f'<row r="{row_idx}">{cells_xml}</row>')
+
+    sheet_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        f"<sheetData>{''.join(sheet_rows_xml)}</sheetData>"
+        "</worksheet>"
+    )
+    workbook_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+        '<sheets><sheet name="Report" sheetId="1" r:id="rId1"/></sheets>'
+        "</workbook>"
+    )
+    rels_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+        "</Relationships>"
+    )
+    workbook_rels_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+        "</Relationships>"
+    )
+    content_types_xml = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+        '<Default Extension="xml" ContentType="application/xml"/>'
+        '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+        '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+        "</Types>"
+    )
 
     output = io.BytesIO()
-    workbook.save(output)
+    with ZipFile(output, "w", compression=ZIP_DEFLATED) as xlsx:
+        xlsx.writestr("[Content_Types].xml", content_types_xml)
+        xlsx.writestr("_rels/.rels", rels_xml)
+        xlsx.writestr("xl/workbook.xml", workbook_xml)
+        xlsx.writestr("xl/_rels/workbook.xml.rels", workbook_rels_xml)
+        xlsx.writestr("xl/worksheets/sheet1.xml", sheet_xml)
     output.seek(0)
     return BufferedInputFile(output.getvalue(), filename=filename)
