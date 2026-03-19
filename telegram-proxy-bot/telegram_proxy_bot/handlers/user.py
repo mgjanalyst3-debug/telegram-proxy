@@ -9,7 +9,7 @@ from aiogram.types import CallbackQuery, Message, User
 from ..config import settings
 from ..handlers.common import answer_screen, show_menu
 from ..repositories.audit import write_audit
-from ..repositories.users import has_used_trial, mark_trial_used, upsert_user
+from ..repositories.users import has_used_trial, is_user_banned, mark_trial_used, upsert_user
 from ..services.payments import send_stars_invoice
 from ..services.server_status import get_server_status
 from ..services.subscriptions import get_active_subscription, issue_or_extend_subscription
@@ -31,8 +31,21 @@ logger = logging.getLogger(__name__)
 router = Router(name="user")
 
 
+async def _ensure_not_banned(target: Message | CallbackQuery, user: User) -> bool:
+    if not is_user_banned(user.id):
+        return True
+    await answer_screen(
+        target,
+        "Ваш аккаунт временно заблокирован. Для уточнения деталей обратитесь в поддержку.",
+        back_keyboard(),
+    )
+    return False
+
+
 async def handle_trial(target: Message | CallbackQuery, user: User) -> None:
     upsert_user(user.id, user.username, user.first_name)
+    if not await _ensure_not_banned(target, user):
+        return
     current = get_active_subscription(user.id)
     if current:
         await answer_screen(
@@ -103,18 +116,24 @@ async def cmd_trial(message: Message) -> None:
 @router.message(Command("buy"))
 async def cmd_buy(message: Message) -> None:
     upsert_user(message.from_user.id, message.from_user.username, message.from_user.first_name)
+    if not await _ensure_not_banned(message, message.from_user):
+        return
     await message.answer(buy_text(), reply_markup=buy_keyboard())
 
 
 @router.message(Command("myproxy"))
 async def cmd_myproxy(message: Message) -> None:
     upsert_user(message.from_user.id, message.from_user.username, message.from_user.first_name)
+    if not await _ensure_not_banned(message, message.from_user):
+        return
     await send_access(message, message.from_user.id)
 
 
 @router.message(Command("status"))
 async def cmd_status(message: Message) -> None:
     upsert_user(message.from_user.id, message.from_user.username, message.from_user.first_name)
+    if not await _ensure_not_banned(message, message.from_user):
+        return
     await send_status(message, message.from_user.id)
 
 
@@ -137,22 +156,30 @@ async def on_trial(callback: CallbackQuery) -> None:
 
 @router.callback_query(F.data == "buy")
 async def on_buy(callback: CallbackQuery) -> None:
+    if not await _ensure_not_banned(callback, callback.from_user):
+        return
     await answer_screen(callback, buy_text(), buy_keyboard())
 
 
 @router.callback_query(F.data == "pay_stars")
 async def on_pay_stars(callback: CallbackQuery, bot: Bot) -> None:
+    if not await _ensure_not_banned(callback, callback.from_user):
+        return
     await callback.answer()
     await send_stars_invoice(callback.message.chat.id, callback.from_user, bot)
 
 
 @router.callback_query(F.data == "my_access")
 async def on_access(callback: CallbackQuery) -> None:
+    if not await _ensure_not_banned(callback, callback.from_user):
+        return
     await send_access(callback, callback.from_user.id)
 
 
 @router.callback_query(F.data == "status")
 async def on_status(callback: CallbackQuery) -> None:
+    if not await _ensure_not_banned(callback, callback.from_user):
+        return
     await send_status(callback, callback.from_user.id)
 
 

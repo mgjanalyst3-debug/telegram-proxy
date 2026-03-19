@@ -30,6 +30,12 @@ def has_used_trial(user_id: int) -> bool:
     return bool(row and row["trial_used"])
 
 
+def is_user_banned(user_id: int) -> bool:
+    with db_context() as conn:
+        row = conn.execute("SELECT is_banned FROM users WHERE user_id=?", (user_id,)).fetchone()
+    return bool(row and row["is_banned"])
+
+
 
 def mark_trial_used(user_id: int) -> None:
     with db_context() as conn:
