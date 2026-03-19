@@ -561,7 +561,6 @@ async def on_admin_subs(callback: CallbackQuery) -> None:
         return
     await answer_screen(callback, format_active_subscriptions_text(), admin_keyboard())
 
-
 @router.callback_query(F.data == "admin_payments")
 async def on_admin_payments(callback: CallbackQuery) -> None:
     if not await _admin_only(callback):
