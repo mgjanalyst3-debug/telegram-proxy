@@ -71,7 +71,7 @@ async def handle_trial(target: Message | CallbackQuery, user: User) -> None:
             menu_keyboard(user.id),
         )
         return
-@@ -81,100 +94,114 @@ async def send_status(target: Message | CallbackQuery, user_id: int) -> None:
+
         await answer_screen(target, "Сейчас у вас нет активной подписки.", back_keyboard())
         return
     await answer_screen(target, status_text(sub), back_keyboard())
