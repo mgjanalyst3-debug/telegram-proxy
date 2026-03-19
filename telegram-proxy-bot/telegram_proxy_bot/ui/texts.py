@@ -271,7 +271,37 @@ def expired_text() -> str:
         "Оформите продление в главном меню, чтобы снова получить рабочий доступ."
     )
 
+def admin_commands_text() -> str:
+    return (
+        f"<b>{settings.bot_brand}</b>\n\n"
+        "<b>⌨️ Команды администратора</b>\n\n"
+        "<b>Подписки</b>\n"
+        "<code>/grant_trial USER_ID</code> — выдать пробный период вручную.\n"
+        "<code>/reset_trial USER_ID</code> — сбросить trial.\n"
+        "<code>/extend USER_ID DAYS</code> — продлить подписку на N дней.\n"
+        "<code>/expire USER_ID</code> — завершить подписку прямо сейчас.\n"
+        "<code>/delete_sub USER_ID</code> — удалить подписки пользователя.\n"
+        "<code>/reissue USER_ID</code> — перевыпустить пароль и синхронизировать Linux-учетку.\n"
+        "<code>/set_limit USER_ID N</code> — лимит подключений.\n"
+        "<code>/set_devices USER_ID N</code> — лимит устройств.\n\n"
+        "<b>Платежи</b>\n"
+        "<code>/payments USER_ID</code> — история платежей.\n"
+        "<code>/mark_paid USER_ID DAYS</code> — вручную активировать подписку.\n"
+        "<code>/refund USER_ID PAYMENT_ID</code> — возврат платежа.\n"
+        "<code>/star_balance</code> — показать текущий баланс Telegram Stars.\n"
+        "<code>/star_tx [LIMIT]</code> — показать последние Star-транзакции.\n\n"
+        "<b>Пользователи и сервис</b>\n"
+        "<code>/user USER_ID</code> — карточка пользователя.\n"
+        "<code>/ban USER_ID</code> / <code>/unban USER_ID</code> — блокировка.\n"
+        "<code>/note USER_ID TEXT</code> — заметка админа.\n"
+        "<code>/users_active</code> / <code>/users_expired</code> — списки пользователей.\n"
+        "<code>/broadcast TEXT</code> / <code>/broadcast_active TEXT</code> — рассылки.\n"
+        "<code>/stats</code>, <code>/health</code>, <code>/whoami</code> — диагностика.\n\n"
+        "Также доступны статистика, таблицы, аудит и выгрузки CSV через кнопки админ-панели."
+    )
+
+
 
 BOTFATHER_DESCRIPTION = (
-    "Персональный SOCKS5-прокси для Telegram: пробный доступ, оплата Stars, быстрый запуск и управление подпиской в одном боте."
+    ""
 )
