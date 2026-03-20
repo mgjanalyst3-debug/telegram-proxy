@@ -3,8 +3,7 @@ from __future__ import annotations
 from ..config import settings
 from ..models import Subscription
 from ..services.server_status import ServerStatus
-from ..utils import format_dt, get_socks5_url
-
+from ..utils import format_dt, get_proxy_connect_url, proxy_type_label
 
 
 def support_text() -> str:
@@ -77,23 +76,26 @@ def setup_text() -> str:
 
 
 
-def buy_text() -> str:
+def buy_text(selected_protocol: str = "socks5") -> str:
     return (
         f"<b>{settings.bot_brand}</b>\n\n"
         "<b>💎 Тариф:</b> 30 дней\n"
         f"<b>⭐ Стоимость:</b> <code>{settings.price_xtr} XTR</code>\n"
         "<b>💳 Способ оплаты:</b> Telegram Stars\n\n"
+        f"<b>⚙️ Протокол по умолчанию:</b> <code>{proxy_type_label(selected_protocol)}</code>\n\n"
         "После оплаты доступ активируется автоматически. Если подписка уже действует, срок будет продлен."
     )
 
 
 
 def subscription_text(sub: Subscription) -> str:
+    connect_url = get_proxy_connect_url(sub)
+    quick_link = f"<b>Быстрая ссылка:</b>\n{connect_url}\n\n" if connect_url else ""
     return (
         f"<b>{settings.bot_brand}</b>\n\n"
         "Ваш персональный доступ готов.\n\n"
         "👉 Если не удалось подключиться — нажмите «Подключить прокси» ещё раз.\n\n"
-        "<b>Протокол:</b> SOCKS5\n"
+        f"<b>Протокол:</b> {proxy_type_label(sub.proxy_type)}\n"
         f"<b>Сервер:</b> <code>{sub.host}</code>\n"
         f"<b>Порт:</b> <code>{sub.port}</code>\n"
         f"<b>Логин:</b> <code>{sub.username}</code>\n"
@@ -102,25 +104,27 @@ def subscription_text(sub: Subscription) -> str:
         f"<b>Доступ до:</b> <code>{format_dt(sub.expires_at)}</code>\n"
         f"<b>Лимит подключений:</b> <code>{sub.connections_limit}</code>\n"
         f"<b>Лимит устройств:</b> <code>{sub.devices_limit}</code>\n\n"
-        f"<b>Быстрая ссылка:</b>\n{get_socks5_url(sub)}\n\n"
+        f"{quick_link}"
         "Это персональный доступ. Пожалуйста, не передавайте его другим людям."
     )
 
 
 
 def access_text(sub: Subscription) -> str:
+    connect_url = get_proxy_connect_url(sub)
+    quick_link = f"<b>Быстрая ссылка:</b>\n{connect_url}\n\n" if connect_url else ""
     return (
         f"<b>{settings.bot_brand}</b>\n\n"
         "<b>📦 Ваш персональный доступ</b>\n\n"
         "👉 Если подключение не работает — нажмите кнопку «Подключить прокси» ещё раз.\n\n"
-        "<b>Протокол:</b> SOCKS5\n"
+        f"<b>Протокол:</b> {proxy_type_label(sub.proxy_type)}\n"
         f"<b>Сервер:</b> <code>{sub.host}</code>\n"
         f"<b>Порт:</b> <code>{sub.port}</code>\n"
         f"<b>Тариф:</b> <code>{sub.plan}</code>\n"
         f"<b>Доступ до:</b> <code>{format_dt(sub.expires_at)}</code>\n"
         f"<b>Лимит подключений:</b> <code>{sub.connections_limit}</code>\n"
         f"<b>Лимит устройств:</b> <code>{sub.devices_limit}</code>\n\n"
-        f"<b>Быстрая ссылка:</b>\n{get_socks5_url(sub)}\n\n"
+        f"{quick_link}"
         "Чтобы не показывать логин и пароль в сообщении, их можно открыть отдельными кнопками ниже."
     )
 
@@ -167,16 +171,13 @@ def server_status_text(status: ServerStatus) -> str:
         f"{comment}"
     )
 
-
-
-
 def status_text(sub: Subscription) -> str:
     return (
         f"<b>{settings.bot_brand}</b>\n\n"
         "<b>📊 Статус подписки:</b> активна\n"
         f"<b>Тариф:</b> <code>{sub.plan}</code>\n"
         f"<b>Доступ до:</b> <code>{format_dt(sub.expires_at)}</code>\n"
-        f"<b>Протокол:</b> <code>{sub.proxy_type}</code>\n"
+        f"<b>Протокол:</b> <code>{proxy_type_label(sub.proxy_type)}</code>\n"
         f"<b>Лимит подключений:</b> <code>{sub.connections_limit}</code>\n"
         f"<b>Лимит устройств:</b> <code>{sub.devices_limit}</code>"
     )
