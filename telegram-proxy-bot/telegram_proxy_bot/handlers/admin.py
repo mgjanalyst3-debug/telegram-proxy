@@ -8,7 +8,7 @@ from ..config import settings
 from ..db import db
 from ..handlers.common import answer_screen
 from ..repositories.audit import write_audit
-from ..repositories.users import upsert_user
+from ..repositories.tickets import add_admin_reply, close_ticket, get_open_ticket
 from ..services.payments import get_star_balance_text, get_star_transactions_text
 from ..services.reports import (
     xlsx_file_from_query,
@@ -63,6 +63,13 @@ def _parse_user_id_arg(message: Message) -> int | None:
     if not args or not args[0].isdigit():
         return None
     return int(args[0])
+
+def _parse_ticket_args(message: Message) -> tuple[int, str] | None:
+    parts = (message.text or "").strip().split(maxsplit=2)
+    if len(parts) < 3 or not parts[1].isdigit():
+        return None
+    return int(parts[1]), parts[2].strip()
+
 
 
 @router.message(Command("admin"))
@@ -288,6 +295,55 @@ async def cmd_refund(message: Message) -> None:
         return
     write_audit(target_user_id, "-", "refund", f"payment_id={payment_id}")
     await message.answer(f"Платеж #{payment_id} отмечен как refunded.")
+@router.message(Command("reply"))
+async def cmd_reply(message: Message, bot: Bot) -> None:
+    if not await _admin_only(message):
+        return
+    parsed = _parse_ticket_args(message)
+    if not parsed:
+        await message.answer("Использование: /reply <ticket_id> <text>")
+        return
+    ticket_id, reply_text = parsed
+    ticket = get_open_ticket(ticket_id)
+    if not ticket:
+        await message.answer("Открытый тикет не найден.")
+        return
+    add_admin_reply(ticket_id, message.from_user.id, reply_text)
+    write_audit(ticket["user_id"], "-", "ticket_reply", f"ticket_id={ticket_id}")
+    await bot.send_message(
+        ticket["user_id"],
+        (
+            f"<b>💬 Ответ по тикету #{ticket_id}</b>\n\n"
+            f"{reply_text}\n\n"
+            "Если вопрос решен — можете ничего не делать. Иначе создайте новый тикет через раздел поддержки."
+        ),
+    )
+    await message.answer(f"Ответ по тикету <code>#{ticket_id}</code> отправлен пользователю.")
+
+
+@router.message(Command("close"))
+async def cmd_close_ticket(message: Message, bot: Bot) -> None:
+    if not await _admin_only(message):
+        return
+    args = _parse_args(message, 2)
+    if not args or not args[0].isdigit():
+        await message.answer("Использование: /close <ticket_id>")
+        return
+    ticket_id = int(args[0])
+    ticket = get_open_ticket(ticket_id)
+    if not ticket:
+        await message.answer("Открытый тикет не найден.")
+        return
+    if not close_ticket(ticket_id, message.from_user.id):
+        await message.answer("Не удалось закрыть тикет.")
+        return
+    write_audit(ticket["user_id"], "-", "ticket_closed", f"ticket_id={ticket_id}")
+    await bot.send_message(
+        ticket["user_id"],
+        f"✅ Тикет <code>#{ticket_id}</code> закрыт. Если понадобится помощь — создайте новый тикет в разделе поддержки.",
+    )
+    await message.answer(f"Тикет <code>#{ticket_id}</code> закрыт.")
+
 
 
 @router.message(Command("user"))
