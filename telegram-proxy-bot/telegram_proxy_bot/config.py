@@ -32,6 +32,8 @@ class Settings:
     db_path: Path
     socks5_host: str
     socks5_port: int
+    http_host: str
+    http_port: int
     socks5_username_prefix: str
     socks5_password_length: int
     linux_proxy_users_enabled: bool
@@ -69,6 +71,8 @@ def load_settings() -> Settings:
         db_path=Path(os.getenv("DB_PATH", "proxy_bot.sqlite3")),
         socks5_host=os.getenv("SOCKS5_HOST", "127.0.0.1"),
         socks5_port=int(os.getenv("SOCKS5_PORT", "1080")),
+        http_host=os.getenv("HTTP_PROXY_HOST", os.getenv("SOCKS5_HOST", "127.0.0.1")),
+        http_port=int(os.getenv("HTTP_PROXY_PORT", os.getenv("SOCKS5_PORT", "1080"))),
         socks5_username_prefix=os.getenv("SOCKS5_USERNAME_PREFIX", "px"),
         socks5_password_length=int(os.getenv("SOCKS5_PASSWORD_LENGTH", "14")),
         linux_proxy_users_enabled=os.getenv("LINUX_PROXY_USERS_ENABLED", "1") == "1",
@@ -86,6 +90,5 @@ def load_settings() -> Settings:
         default_connections_limit=int(os.getenv("DEFAULT_CONNECTIONS_LIMIT", "2")),
         default_devices_limit=int(os.getenv("DEFAULT_DEVICES_LIMIT", "2")),
     )
-
 
 settings = load_settings()
