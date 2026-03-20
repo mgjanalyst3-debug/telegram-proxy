@@ -20,12 +20,19 @@ class PaymentHandlingResult:
 
 
 
-def create_invoice_payload(user_id: int, prefix: str = "sub30") -> str:
-    return f"{prefix}_{user_id}_{token_urlsafe(8)}"
+def create_invoice_payload(user_id: int, proxy_type: str = "socks5", prefix: str = "sub30") -> str:
+    return f"{prefix}_{proxy_type}_{user_id}_{token_urlsafe(8)}"
 
 
-async def send_stars_invoice(chat_id: int, user: User, bot: Bot) -> None:
-    payload = create_invoice_payload(user.id)
+def extract_proxy_type_from_payload(payload: str) -> str:
+    parts = (payload or "").split("_")
+    if len(parts) >= 4 and parts[1] in {"socks5", "http"}:
+        return parts[1]
+    return "socks5"
+
+
+async def send_stars_invoice(chat_id: int, user: User, bot: Bot, proxy_type: str = "socks5") -> None:
+    payload = create_invoice_payload(user.id, proxy_type=proxy_type)
     payments_repo.create_payment_invoice(user.id, payload, settings.price_xtr, "XTR", "new")
     await bot.send_invoice(
         chat_id=chat_id,
@@ -63,7 +70,13 @@ async def handle_successful_payment(message: Message) -> PaymentHandlingResult:
         is_first_recurring=getattr(payment, "is_first_recurring", False),
     )
 
-    sub = issue_or_extend_subscription(message.from_user.id, plan="30 дней", days=settings.paid_days)
+    selected_proxy_type = extract_proxy_type_from_payload(payment.invoice_payload)
+    sub = issue_or_extend_subscription(
+        message.from_user.id,
+        plan="30 дней",
+        days=settings.paid_days,
+        proxy_type=selected_proxy_type,
+    )
     payments_repo.mark_payment_fulfilled(payment.invoice_payload)
     write_audit(
         message.from_user.id,
