@@ -52,3 +52,16 @@ def get_socks5_url(sub: Subscription) -> str:
         f"server={sub.host}&port={sub.port}"
         f"&user={quote(sub.username, safe='')}&pass={quote(sub.password, safe='')}"
     )
+
+
+def get_proxy_connect_url(sub: Subscription) -> str | None:
+    if sub.proxy_type.lower() == "socks5":
+        return get_socks5_url(sub)
+    return None
+
+
+def proxy_type_label(proxy_type: str) -> str:
+    normalized = proxy_type.lower().strip()
+    if normalized == "http":
+        return "HTTP"
+    return "SOCKS5"
