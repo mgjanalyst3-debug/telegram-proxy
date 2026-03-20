@@ -9,6 +9,7 @@ from aiogram.types import CallbackQuery, Message, User
 from ..config import settings
 from ..handlers.common import answer_screen, show_menu
 from ..repositories.audit import count_recent_user_actions, write_audit
+from ..repositories.tickets import clear_ticket_draft, create_ticket, create_ticket_draft, has_ticket_draft
 from ..repositories.users import has_used_trial, is_user_banned, mark_trial_used, upsert_user
 from ..services.payments import send_stars_invoice
 from ..services.server_status import get_server_status
@@ -17,7 +18,7 @@ from ..services.subscriptions import (
     issue_or_extend_subscription,
     reissue_subscription_credentials,
 )
-from ..ui.keyboards import access_keyboard, back_keyboard, buy_keyboard, menu_keyboard
+from ..ui.keyboards import access_keyboard, back_keyboard, buy_keyboard, menu_keyboard, support_keyboard
 from ..ui.texts import (
     access_text,
     buy_text,
@@ -223,7 +224,62 @@ async def on_faq(callback: CallbackQuery) -> None:
 
 @router.callback_query(F.data == "support")
 async def on_support(callback: CallbackQuery) -> None:
-    await answer_screen(callback, support_screen_text(), back_keyboard())
+    await answer_screen(callback, support_screen_text(), support_keyboard())
+
+
+@router.callback_query(F.data == "create_ticket")
+async def on_create_ticket(callback: CallbackQuery) -> None:
+    if not await _ensure_not_banned(callback, callback.from_user):
+        return
+    create_ticket_draft(callback.from_user.id)
+    await answer_screen(
+        callback,
+        "<b>🎫 Новый тикет</b>\n\nОпишите проблему одним сообщением. После отправки тикет будет создан и передан администратору.",
+        back_keyboard(),
+    )
+
+
+@router.message(F.text & ~F.text.startswith("/"))
+async def on_ticket_message(message: Message, bot: Bot) -> None:
+    if not has_ticket_draft(message.from_user.id):
+        return
+    if not await _ensure_not_banned(message, message.from_user):
+        clear_ticket_draft(message.from_user.id)
+        return
+
+    text = (message.text or "").strip()
+    if not text:
+        await message.answer("Пожалуйста, отправьте текстовое описание проблемы одним сообщением.")
+        return
+
+    ticket_id = create_ticket(message.from_user.id, text)
+    clear_ticket_draft(message.from_user.id)
+    write_audit(message.from_user.id, message.from_user.username or "-", "ticket_created", f"ticket_id={ticket_id}")
+
+    user_name = message.from_user.full_name or "-"
+    username = f"@{message.from_user.username}" if message.from_user.username else "-"
+    for admin_id in settings.admin_ids:
+        try:
+            await bot.send_message(
+                admin_id,
+                (
+                    "<b>🎫 Новый тикет</b>\n\n"
+                    f"<b>ID:</b> <code>{ticket_id}</code>\n"
+                    f"<b>User ID:</b> <code>{message.from_user.id}</code>\n"
+                    f"<b>Пользователь:</b> <code>{user_name}</code>\n"
+                    f"<b>Username:</b> <code>{username}</code>\n\n"
+                    f"<b>Сообщение:</b>\n{text}\n\n"
+                    f"Ответ: <code>/reply {ticket_id} текст</code>\n"
+                    f"Закрыть: <code>/close {ticket_id}</code>"
+                ),
+            )
+        except Exception:
+            logger.exception("Не удалось отправить тикет %s админу %s", ticket_id, admin_id)
+
+    await message.answer(
+        f"✅ Тикет <code>#{ticket_id}</code> создан. Мы ответим в этом чате.",
+        reply_markup=menu_keyboard(message.from_user.id),
+    )
 
 
 @router.callback_query(F.data == "noop")
