@@ -71,11 +71,6 @@ def normalize_legacy_subscription_row(row) -> Subscription:
     ):
         needs_update = True
 
-    if row["proxy_type"] != "socks5" or int(row["port"] or 0) != settings.socks5_port:
-        proxy_type = "socks5"
-        host = settings.socks5_host
-        port = settings.socks5_port
-        needs_update = True
 
     if needs_update:
         with db_context() as conn:
