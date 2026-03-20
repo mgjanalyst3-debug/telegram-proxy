@@ -8,11 +8,15 @@ from aiogram.types import CallbackQuery, Message, User
 
 from ..config import settings
 from ..handlers.common import answer_screen, show_menu
-from ..repositories.audit import write_audit
+from ..repositories.audit import count_recent_user_actions, write_audit
 from ..repositories.users import has_used_trial, is_user_banned, mark_trial_used, upsert_user
 from ..services.payments import send_stars_invoice
 from ..services.server_status import get_server_status
-from ..services.subscriptions import get_active_subscription, issue_or_extend_subscription
+from ..services.subscriptions import (
+    get_active_subscription,
+    issue_or_extend_subscription,
+    reissue_subscription_credentials,
+)
 from ..ui.keyboards import access_keyboard, back_keyboard, buy_keyboard, menu_keyboard
 from ..ui.texts import (
     access_text,
@@ -114,7 +118,7 @@ async def cmd_buy(message: Message) -> None:
     upsert_user(message.from_user.id, message.from_user.username, message.from_user.first_name)
     if not await _ensure_not_banned(message, message.from_user):
         return
-    await message.answer(buy_text(), reply_markup=buy_keyboard())
+    await message.answer(buy_text(), reply_markup=buy_keyboard("socks5"))
 
 
 @router.message(Command("myproxy"))
@@ -154,15 +158,30 @@ async def on_trial(callback: CallbackQuery) -> None:
 async def on_buy(callback: CallbackQuery) -> None:
     if not await _ensure_not_banned(callback, callback.from_user):
         return
-    await answer_screen(callback, buy_text(), buy_keyboard())
+    await answer_screen(callback, buy_text(), buy_keyboard("socks5"))
 
 
-@router.callback_query(F.data == "pay_stars")
+@router.callback_query(F.data.startswith("buy_protocol:"))
+async def on_buy_protocol(callback: CallbackQuery) -> None:
+    if not await _ensure_not_banned(callback, callback.from_user):
+        return
+    selected = (callback.data or "").split(":", 1)[1]
+    if selected not in {"socks5", "http"}:
+        selected = "socks5"
+    await answer_screen(callback, buy_text(selected), buy_keyboard(selected))
+
+
+@router.callback_query(F.data.startswith("pay_stars"))
 async def on_pay_stars(callback: CallbackQuery, bot: Bot) -> None:
     if not await _ensure_not_banned(callback, callback.from_user):
         return
     await callback.answer()
-    await send_stars_invoice(callback.message.chat.id, callback.from_user, bot)
+    selected = "socks5"
+    if callback.data and ":" in callback.data:
+        selected = callback.data.split(":", 1)[1]
+    if selected not in {"socks5", "http"}:
+        selected = "socks5"
+    await send_stars_invoice(callback.message.chat.id, callback.from_user, bot, proxy_type=selected)
 
 
 @router.callback_query(F.data == "my_access")
@@ -207,6 +226,11 @@ async def on_support(callback: CallbackQuery) -> None:
     await answer_screen(callback, support_screen_text(), back_keyboard())
 
 
+@router.callback_query(F.data == "noop")
+async def on_noop(callback: CallbackQuery) -> None:
+    await callback.answer()
+
+
 @router.callback_query(F.data == "show_username")
 async def on_show_username(callback: CallbackQuery) -> None:
     sub = get_active_subscription(callback.from_user.id)
@@ -223,3 +247,25 @@ async def on_show_password(callback: CallbackQuery) -> None:
         await callback.answer("У вас нет активного доступа.", show_alert=True)
         return
     await callback.answer(f"Пароль: {sub.password}", show_alert=True)
+
+
+@router.callback_query(F.data == "reissue_token")
+async def on_reissue_token(callback: CallbackQuery) -> None:
+    sub = get_active_subscription(callback.from_user.id)
+    if not sub:
+        await callback.answer("У вас нет активного доступа.", show_alert=True)
+        return
+
+    recent_reissues = count_recent_user_actions(callback.from_user.id, "user_token_reissue", hours=24)
+    if recent_reissues >= 2:
+        await callback.answer("Лимит перевыпуска токена: 2 раза за 24 часа.", show_alert=True)
+        return
+
+    new_sub = reissue_subscription_credentials(callback.from_user.id)
+    if not new_sub:
+        await callback.answer("Не удалось перевыпустить токен. Попробуйте позже.", show_alert=True)
+        return
+
+    write_audit(callback.from_user.id, new_sub.username, "user_token_reissue", "перевыпуск из раздела Мой доступ")
+    await callback.answer("Токен перевыпущен. Старое подключение отключено.", show_alert=True)
+    await answer_screen(callback, access_text(new_sub), access_keyboard(new_sub))
