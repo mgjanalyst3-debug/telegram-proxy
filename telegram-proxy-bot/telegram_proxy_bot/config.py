@@ -73,7 +73,7 @@ def load_settings() -> Settings:
         socks5_password_length=int(os.getenv("SOCKS5_PASSWORD_LENGTH", "14")),
         linux_proxy_users_enabled=os.getenv("LINUX_PROXY_USERS_ENABLED", "1") == "1",
         linux_proxy_shell=os.getenv("LINUX_PROXY_SHELL", "/usr/sbin/nologin"),
-        trial_hours=int(os.getenv("TRIAL_HOURS", "72")),
+        trial_hours=int(os.getenv("TRIAL_HOURS", "168")),
         paid_days=int(os.getenv("PAID_DAYS", "30")),
         price_xtr=int(os.getenv("PRICE_XTR", "50")),
         bot_brand=os.getenv("BOT_BRAND", "Премиум прокси"),
@@ -82,7 +82,7 @@ def load_settings() -> Settings:
         display_tz=ZoneInfo(tz_name),
         log_level=os.getenv("LOG_LEVEL", "INFO").upper(),
         subscription_check_interval_seconds=int(os.getenv("SUBSCRIPTION_CHECK_INTERVAL_SECONDS", "300")),
-        reminder_hours=(72, 24),
+        reminder_hours=(24, 1),
         default_connections_limit=int(os.getenv("DEFAULT_CONNECTIONS_LIMIT", "2")),
         default_devices_limit=int(os.getenv("DEFAULT_DEVICES_LIMIT", "2")),
     )
