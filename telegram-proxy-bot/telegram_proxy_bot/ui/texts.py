@@ -92,6 +92,7 @@ def subscription_text(sub: Subscription) -> str:
     return (
         f"<b>{settings.bot_brand}</b>\n\n"
         "Ваш персональный доступ готов.\n\n"
+        "👉 Если не удалось подключиться — нажмите «Подключить прокси» ещё раз.\n\n"
         "<b>Протокол:</b> SOCKS5\n"
         f"<b>Сервер:</b> <code>{sub.host}</code>\n"
         f"<b>Порт:</b> <code>{sub.port}</code>\n"
@@ -102,7 +103,7 @@ def subscription_text(sub: Subscription) -> str:
         f"<b>Лимит подключений:</b> <code>{sub.connections_limit}</code>\n"
         f"<b>Лимит устройств:</b> <code>{sub.devices_limit}</code>\n\n"
         f"<b>Быстрая ссылка:</b>\n{get_socks5_url(sub)}\n\n"
-        "Это персональный конфиг. Не передавайте его другим людям."
+        "Это персональный доступ. Пожалуйста, не передавайте его другим людям."
     )
 
 
@@ -111,6 +112,7 @@ def access_text(sub: Subscription) -> str:
     return (
         f"<b>{settings.bot_brand}</b>\n\n"
         "<b>📦 Ваш персональный доступ</b>\n\n"
+        "👉 Если подключение не работает — нажмите кнопку «Подключить прокси» ещё раз.\n\n"
         "<b>Протокол:</b> SOCKS5\n"
         f"<b>Сервер:</b> <code>{sub.host}</code>\n"
         f"<b>Порт:</b> <code>{sub.port}</code>\n"
@@ -119,7 +121,7 @@ def access_text(sub: Subscription) -> str:
         f"<b>Лимит подключений:</b> <code>{sub.connections_limit}</code>\n"
         f"<b>Лимит устройств:</b> <code>{sub.devices_limit}</code>\n\n"
         f"<b>Быстрая ссылка:</b>\n{get_socks5_url(sub)}\n\n"
-        "Чтобы не светить данные в сообщении, логин и пароль можно открыть отдельными кнопками ниже."
+        "Чтобы не показывать логин и пароль в сообщении, их можно открыть отдельными кнопками ниже."
     )
 
 def _format_ms(value: float | None) -> str:
