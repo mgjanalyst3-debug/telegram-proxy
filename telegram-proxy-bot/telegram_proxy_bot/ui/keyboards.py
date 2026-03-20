@@ -2,29 +2,31 @@ from __future__ import annotations
 
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
-from ..models import Subscription
-from ..services.subscriptions import get_active_subscription
-from ..ui.texts import support_text
-from ..utils import get_socks5_url
 from ..config import settings
+from ..models import Subscription
+from ..utils import get_proxy_connect_url
 
 
 
 def access_keyboard(sub: Subscription) -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="🔗 Подключить прокси", url=get_socks5_url(sub))],
-            [
-                InlineKeyboardButton(text="👤 Показать логин", callback_data="show_username"),
-                InlineKeyboardButton(text="🔑 Показать пароль", callback_data="show_password"),
-            ],
-            [
-                InlineKeyboardButton(text="🛠 Инструкция", callback_data="setup"),
-                InlineKeyboardButton(text="🏠 В меню", callback_data="menu"),
-            ],
+    rows: list[list[InlineKeyboardButton]] = []
+    connect_url = get_proxy_connect_url(sub)
+    if connect_url:
+        rows.append([InlineKeyboardButton(text="🔗 Подключить прокси", url=connect_url)])
+    rows.append(
+        [
+            InlineKeyboardButton(text="👤 Показать логин", callback_data="show_username"),
+            InlineKeyboardButton(text="🔑 Показать пароль", callback_data="show_password"),
         ]
     )
-
+    rows.append([InlineKeyboardButton(text="🔄 Перевыпустить токен", callback_data="reissue_token")])
+    rows.append(
+        [
+            InlineKeyboardButton(text="🛠 Инструкция", callback_data="setup"),
+            InlineKeyboardButton(text="🏠 В меню", callback_data="menu"),
+        ]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
 def admin_keyboard() -> InlineKeyboardMarkup:
@@ -92,10 +94,20 @@ def back_keyboard() -> InlineKeyboardMarkup:
 
 
 
-def buy_keyboard() -> InlineKeyboardMarkup:
+def buy_keyboard(selected_protocol: str = "socks5") -> InlineKeyboardMarkup:
+    normalized = selected_protocol.lower().strip()
+    if normalized not in {"socks5", "http"}:
+        normalized = "socks5"
+    socks_label = "✅ SOCKS5" if normalized == "socks5" else "SOCKS5"
+    http_label = "✅ HTTP" if normalized == "http" else "HTTP"
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="⭐ Оплатить через Telegram Stars", callback_data="pay_stars")],
+            [InlineKeyboardButton(text="⚙️ Выбрать протокол", callback_data="noop")],
+            [
+                InlineKeyboardButton(text=socks_label, callback_data="buy_protocol:socks5"),
+                InlineKeyboardButton(text=http_label, callback_data="buy_protocol:http"),
+            ],
+            [InlineKeyboardButton(text="⭐ Оплатить через Telegram Stars", callback_data=f"pay_stars:{normalized}")],
             [InlineKeyboardButton(text="🏠 Вернуться в меню", callback_data="menu")],
         ]
     )
