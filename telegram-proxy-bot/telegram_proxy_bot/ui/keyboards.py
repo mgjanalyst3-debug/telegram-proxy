@@ -94,6 +94,14 @@ def back_keyboard() -> InlineKeyboardMarkup:
         inline_keyboard=[[InlineKeyboardButton(text="🏠 Вернуться в меню", callback_data="menu")]]
     )
 
+def support_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🎫 Создать обращение в поддержку", callback_data="create_ticket")],
+            [InlineKeyboardButton(text="🏠 Вернуться в меню", callback_data="menu")],
+        ]
+    )
+
 
 
 def buy_keyboard(selected_protocol: str = "socks5") -> InlineKeyboardMarkup:
