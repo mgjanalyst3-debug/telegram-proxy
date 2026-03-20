@@ -6,11 +6,6 @@ from ..services.server_status import ServerStatus
 from ..utils import format_dt, get_proxy_connect_url, proxy_type_label
 
 
-def support_text() -> str:
-    return f"@{settings.support_username}" if settings.support_username else "администратору бота"
-
-
-
 def welcome_text() -> str:
     return (
         f"<b>{settings.bot_brand}</b>\n\n"
@@ -53,7 +48,7 @@ def faq_text() -> str:
         "Доступ персональный. Один аккаунт должен использоваться только владельцем подписки.\n\n"
         "<b>📱 Где подключать прокси?</b>\n"
         "В Telegram откройте настройки прокси, выберите SOCKS5 и введите данные из раздела «Мой доступ», либо используйте кнопку «Подключить прокси».\n\n"
-        f"<b>🆘 Куда обращаться?</b>\n{support_text()}"
+        "<b>🆘 Куда обращаться?</b>\nОткройте раздел «Поддержка» и создайте обращение."
     )
 
 
@@ -216,8 +211,8 @@ def payment_duplicate_text(sub: Subscription | None) -> str:
 def support_screen_text() -> str:
     return (
         f"<b>{settings.bot_brand}</b>\n\n"
-        f"🆘 Если вам нужна помощь, напишите {support_text()}.\n\n"
-        "Чем подробнее вы опишете проблему, тем быстрее получится помочь."
+        "🆘 Поддержка работает через обращения внутри бота.\n\n"
+        "Нажмите «Создать обращение» и отправьте одним сообщением описание проблемы."
     )
 
 
@@ -226,7 +221,7 @@ def paysupport_text() -> str:
     return (
         f"<b>{settings.bot_brand}</b>\n\n"
         "<b>💳 Поддержка по оплате</b>\n\n"
-        f"По вопросам оплаты, возвратов и зачисления Stars напишите {support_text()}.\n"
+        "По вопросам оплаты, возвратов и зачисления Stars создайте обращение в боте.\n"
         "В сообщении укажите дату платежа, сумму и ваш user_id — это ускорит проверку."
     )
 
@@ -294,6 +289,8 @@ def admin_commands_text() -> str:
         "<code>/star_balance</code> — показать текущий баланс Telegram Stars.\n"
         "<code>/star_tx [LIMIT]</code> — показать последние Star-транзакции.\n\n"
         "<b>Пользователи и сервис</b>\n"
+        "<code>/reply TICKET_ID TEXT</code> — ответить пользователю по тикету.\n"
+        "<code>/close TICKET_ID</code> — закрыть тикет.\n"
         "<code>/user USER_ID</code> — карточка пользователя.\n"
         "<code>/ban USER_ID</code> / <code>/unban USER_ID</code> — блокировка.\n"
         "<code>/note USER_ID TEXT</code> — заметка админа.\n"
@@ -302,6 +299,7 @@ def admin_commands_text() -> str:
         "<code>/stats</code>, <code>/health</code>, <code>/whoami</code> — диагностика.\n\n"
         "Также доступны статистика, таблицы, аудит и выгрузки XLSX через кнопки админ-панели."
     )
+
 
 
 
