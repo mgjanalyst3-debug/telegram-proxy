@@ -48,13 +48,12 @@ async def _check_active_subscriptions(bot: Bot) -> None:
                 subs_repo.set_expired_notice_sent(sub.row_id, now_iso())
             continue
 
-        if remaining <= timedelta(hours=24) and not sub.remind_24_sent_at:
-            await _send_expiring_reminder(bot, sub.user_id, sub.row_id, 24)
+        if remaining <= timedelta(hours=1) and not sub.remind_1_sent_at:
+            await _send_expiring_reminder(bot, sub.user_id, sub.row_id, 1)
             continue
 
-        if remaining <= timedelta(hours=72) and not sub.remind_72_sent_at:
-            await _send_expiring_reminder(bot, sub.user_id, sub.row_id, 72)
-
+        if remaining <= timedelta(hours=24) and not sub.remind_24_sent_at:
+            await _send_expiring_reminder(bot, sub.user_id, sub.row_id, 24)
 
 async def _send_expiring_reminder(bot: Bot, user_id: int, subscription_id: int, hours: int) -> None:
     try:
