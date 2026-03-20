@@ -59,7 +59,6 @@ def init_db() -> None:
                 expires_at TEXT NOT NULL,
                 connections_limit INTEGER NOT NULL DEFAULT 2,
                 devices_limit INTEGER NOT NULL DEFAULT 2,
-                remind_72_sent_at TEXT NOT NULL DEFAULT '',
                 remind_24_sent_at TEXT NOT NULL DEFAULT '',
                 expired_notice_sent_at TEXT NOT NULL DEFAULT ''
             );
@@ -114,8 +113,9 @@ def init_db() -> None:
         add_column_if_missing(conn, "subscriptions", "issued_at TEXT NOT NULL DEFAULT ''", "issued_at")
         add_column_if_missing(conn, "subscriptions", "connections_limit INTEGER NOT NULL DEFAULT 2", "connections_limit")
         add_column_if_missing(conn, "subscriptions", "devices_limit INTEGER NOT NULL DEFAULT 2", "devices_limit")
-        add_column_if_missing(conn, "subscriptions", "remind_72_sent_at TEXT NOT NULL DEFAULT ''", "remind_72_sent_at")
+
         add_column_if_missing(conn, "subscriptions", "remind_24_sent_at TEXT NOT NULL DEFAULT ''", "remind_24_sent_at")
+        add_column_if_missing(conn, "subscriptions", "remind_1_sent_at TEXT NOT NULL DEFAULT ''", "remind_1_sent_at")
         add_column_if_missing(conn, "subscriptions", "expired_notice_sent_at TEXT NOT NULL DEFAULT ''", "expired_notice_sent_at")
 
         add_column_if_missing(conn, "payments", "payload TEXT NOT NULL DEFAULT ''", "payload")
