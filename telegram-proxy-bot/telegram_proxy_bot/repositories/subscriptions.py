@@ -10,9 +10,14 @@ from ..utils import build_password, build_username
 
 SUBSCRIPTION_SELECT = (
     "SELECT id, user_id, plan, proxy_type, host, port, username, password, status, issued_at, expires_at, "
-    "connections_limit, devices_limit, remind_72_sent_at, remind_24_sent_at, expired_notice_sent_at "
+    "connections_limit, devices_limit, remind_24_sent_at, remind_1_sent_at, expired_notice_sent_at "
     "FROM subscriptions"
 )
+
+
+def _row_value(row, key: str, default=""):
+    return row[key] if key in row.keys() else default
+
 
 
 
@@ -31,8 +36,8 @@ def _row_to_subscription(row) -> Subscription:
         expires_at=row["expires_at"],
         connections_limit=row["connections_limit"],
         devices_limit=row["devices_limit"],
-        remind_72_sent_at=row["remind_72_sent_at"],
-        remind_24_sent_at=row["remind_24_sent_at"],
+        remind_24_sent_at=_row_value(row, "remind_24_sent_at"),
+        remind_1_sent_at=_row_value(row, "remind_1_sent_at", _row_value(row, "remind_72_sent_at")),
         expired_notice_sent_at=row["expired_notice_sent_at"],
     )
 
@@ -129,7 +134,7 @@ def insert_subscription(sub: Subscription) -> Subscription:
             """
             INSERT INTO subscriptions (
                 user_id, plan, proxy_type, host, port, username, password, secret, status, issued_at, expires_at,
-                connections_limit, devices_limit, remind_72_sent_at, remind_24_sent_at, expired_notice_sent_at
+                connections_limit, devices_limit, remind_24_sent_at, remind_1_sent_at, expired_notice_sent_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
@@ -146,14 +151,15 @@ def insert_subscription(sub: Subscription) -> Subscription:
                 sub.expires_at,
                 sub.connections_limit,
                 sub.devices_limit,
-                sub.remind_72_sent_at,
                 sub.remind_24_sent_at,
+                sub.remind_1_sent_at,
                 sub.expired_notice_sent_at,
             ),
         )
         row_id = cursor.lastrowid
         row = conn.execute(f"{SUBSCRIPTION_SELECT} WHERE id=?", (row_id,)).fetchone()
     return _row_to_subscription(row)
+
 
 
 
@@ -165,9 +171,8 @@ def expire_active_subscriptions(user_id: int) -> None:
         )
 
 
-
 def set_reminder_sent(subscription_id: int, hours_before: int, timestamp: str) -> None:
-    column = "remind_72_sent_at" if hours_before >= 72 else "remind_24_sent_at"
+    column = "remind_24_sent_at" if hours_before >= 24 else "remind_1_sent_at"
     with db_context() as conn:
         conn.execute(f"UPDATE subscriptions SET {column}=? WHERE id=?", (timestamp, subscription_id))
 
