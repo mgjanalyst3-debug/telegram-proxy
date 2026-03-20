@@ -90,6 +90,29 @@ def init_db() -> None:
                 details TEXT NOT NULL DEFAULT '',
                 created_at TEXT NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS tickets (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                status TEXT NOT NULL DEFAULT 'open',
+                created_at TEXT NOT NULL,
+                closed_at TEXT NOT NULL DEFAULT ''
+            );
+
+            CREATE TABLE IF NOT EXISTS ticket_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticket_id INTEGER NOT NULL,
+                author_role TEXT NOT NULL,
+                author_id INTEGER NOT NULL,
+                text TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(ticket_id) REFERENCES tickets(id) ON DELETE CASCADE
+            );
+
+            CREATE TABLE IF NOT EXISTS ticket_drafts (
+                user_id INTEGER PRIMARY KEY,
+                created_at TEXT NOT NULL
+            );
+
 
             CREATE INDEX IF NOT EXISTS idx_subscriptions_user_status ON subscriptions(user_id, status);
             CREATE INDEX IF NOT EXISTS idx_subscriptions_expires_at ON subscriptions(expires_at);
@@ -97,6 +120,8 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_payments_user_id ON payments(user_id);
             CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_payload ON payments(payload);
             CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_charge_id ON payments(telegram_payment_charge_id) WHERE telegram_payment_charge_id != '';
+            CREATE INDEX IF NOT EXISTS idx_tickets_user_status ON tickets(user_id, status);
+            CREATE INDEX IF NOT EXISTS idx_ticket_messages_ticket_id ON ticket_messages(ticket_id);
             """
         )
 
