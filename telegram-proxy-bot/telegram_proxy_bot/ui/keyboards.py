@@ -6,6 +6,7 @@ from ..config import settings
 from ..models import Subscription
 from ..utils import get_proxy_connect_url
 
+TELEGRAPH_SETUP_URL = "https://telegra.ph/Premium-dostup-dlya-Telegram-03-20"
 
 
 def access_keyboard(sub: Subscription) -> InlineKeyboardMarkup:
@@ -22,7 +23,7 @@ def access_keyboard(sub: Subscription) -> InlineKeyboardMarkup:
     rows.append([InlineKeyboardButton(text="🔄 Перевыпустить токен", callback_data="reissue_token")])
     rows.append(
         [
-            InlineKeyboardButton(text="🛠 Инструкция", callback_data="setup"),
+            InlineKeyboardButton(text="🛠 Инструкция", url=TELEGRAPH_SETUP_URL),
             InlineKeyboardButton(text="🏠 В меню", callback_data="menu"),
         ]
     )
@@ -68,7 +69,7 @@ def menu_keyboard(user_id: int | None = None) -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton(text="📊 Статус подписки", callback_data="status"),
-            InlineKeyboardButton(text="🛠 Как подключить", callback_data="setup"),
+            InlineKeyboardButton(text="🛠 Как подключить", url=TELEGRAPH_SETUP_URL),
         ],
         [InlineKeyboardButton(text="🟢 Статус сервера", callback_data="server_status")],
         [
@@ -84,6 +85,7 @@ def menu_keyboard(user_id: int | None = None) -> InlineKeyboardMarkup:
             ]
         )
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
 
 
 
