@@ -14,6 +14,11 @@ from ..utils import build_password, build_username, now_iso, now_utc, parse_dt
 def create_personal_credentials(user_id: int) -> tuple[str, str]:
     return build_username(user_id), build_password()
 
+def resolve_proxy_endpoint(proxy_type: str) -> tuple[str, int]:
+    normalized = proxy_type.lower().strip()
+    if normalized == "http":
+        return settings.http_host, settings.http_port
+    return settings.socks5_host, settings.socks5_port
 
 
 def get_latest_subscription(user_id: int):
@@ -32,7 +37,14 @@ def get_active_subscription(user_id: int):
 
 
 
-def issue_or_extend_subscription(user_id: int, plan: str, *, days: int = 0, hours: int = 0) -> Subscription:
+def issue_or_extend_subscription(
+    user_id: int,
+    plan: str,
+    *,
+    days: int = 0,
+    hours: int = 0,
+    proxy_type: str = "socks5",
+) -> Subscription:
     current = get_active_subscription(user_id)
     start_from = now_utc()
     if current:
@@ -48,14 +60,16 @@ def issue_or_extend_subscription(user_id: int, plan: str, *, days: int = 0, hour
         connections_limit = settings.default_connections_limit
         devices_limit = settings.default_devices_limit
 
+    normalized_proxy_type = proxy_type.lower().strip()
+    host, port = resolve_proxy_endpoint(normalized_proxy_type)
     expires = start_from + timedelta(days=days, hours=hours)
     draft = Subscription(
         row_id=0,
         user_id=user_id,
         plan=plan,
-        proxy_type="socks5",
-        host=settings.socks5_host,
-        port=settings.socks5_port,
+        proxy_type=normalized_proxy_type,
+        host=host,
+        port=port,
         username=username,
         password=password,
         status="active",
@@ -78,13 +92,14 @@ def reissue_subscription_credentials(user_id: int) -> Subscription | None:
     remaining_seconds = max(3600, int((parse_dt(current.expires_at) - now_utc()).total_seconds()))
     username = current.username or build_username(user_id)
     password = build_password()
+    host, port = resolve_proxy_endpoint(current.proxy_type)
     new_sub = Subscription(
         row_id=0,
         user_id=user_id,
         plan=current.plan,
-        proxy_type="socks5",
-        host=settings.socks5_host,
-        port=settings.socks5_port,
+        proxy_type=current.proxy_type,
+        host=host,
+        port=port,
         username=username,
         password=password,
         status="active",
@@ -98,7 +113,6 @@ def reissue_subscription_credentials(user_id: int) -> Subscription | None:
     return subs_repo.insert_subscription(new_sub)
 
 
-
 def expire_user_subscription(user_id: int, username: str | None = None) -> None:
     active = subs_repo.get_latest_active_subscription_raw(user_id)
     subs_repo.expire_active_subscriptions(user_id)
@@ -108,20 +122,16 @@ def expire_user_subscription(user_id: int, username: str | None = None) -> None:
         disable_expired_subscription_in_linux(active.username)
 
 
-
 def reset_trial_for_user(user_id: int) -> None:
     reset_trial_used(user_id)
-
 
 
 def list_active_subscriptions(limit: int = 15):
     return [subs_repo.normalize_legacy_subscription_row(row) for row in subs_repo.list_recent_latest_active_subscriptions(limit)]
 
 
-
 def list_active_subscriptions_for_watch():
     return [subs_repo.normalize_legacy_subscription_row(row) for row in subs_repo.list_active_subscription_snapshots_for_watch()]
-
 
 
 def list_latest_subscription_snapshots(limit: int = 15):
