@@ -18,8 +18,8 @@ class Subscription:
     expires_at: str
     connections_limit: int = 2
     devices_limit: int = 2
-    remind_72_sent_at: str = ""
     remind_24_sent_at: str = ""
+    remind_1_sent_at: str = ""
     expired_notice_sent_at: str = ""
 
 
