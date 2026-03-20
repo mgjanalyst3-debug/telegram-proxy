@@ -40,7 +40,7 @@ def main() -> None:
         db.init_db()
         users_repo.upsert_user(1001, "tester", "Smoke")
 
-        sub = subs_service.issue_or_extend_subscription(1001, plan="пробная подписка", hours=72)
+        sub = subs_service.issue_or_extend_subscription(1001, plan="пробная подписка", hours=168)
         assert sub.user_id == 1001
         assert sub.username.startswith("px")
         assert sub.port == 1080
