@@ -13,14 +13,11 @@ logger = logging.getLogger(__name__)
 async def answer_screen(target: Message | CallbackQuery, text: str, keyboard) -> None:
     if isinstance(target, CallbackQuery):
         try:
-            await target.answer()
-        except Exception as exc:  # pragma: no cover - telegram side behavior
-            logger.debug("callback answer pre-edit skipped: %s", exc)
-        try:
             await target.message.edit_text(text, reply_markup=keyboard, disable_web_page_preview=True)
         except Exception as exc:  # pragma: no cover - telegram side behavior
             logger.debug("edit_text fallback to answer: %s", exc)
             await target.message.answer(text, reply_markup=keyboard, disable_web_page_preview=True)
+        await target.answer()
     else:
         await target.answer(text, reply_markup=keyboard, disable_web_page_preview=True)
 
