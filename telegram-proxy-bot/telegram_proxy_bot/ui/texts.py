@@ -131,6 +131,12 @@ def _format_ms(value: float | None) -> str:
     return f"{int(round(value))} мс"
 
 
+def _format_ms(value: float | None) -> str:
+    if value is None:
+        return "нет данных"
+    return f"{int(round(value))} мс"
+
+
 def server_status_text(status: ServerStatus) -> str:
     latency = status.tcp_latency_ms if status.tcp_latency_ms is not None else status.ping_ms
     if not status.tcp_available or status.auth_available is False:
@@ -161,13 +167,14 @@ def server_status_text(status: ServerStatus) -> str:
         f"<b>Сервер:</b> {server_line}\n"
         f"<b>Подключение:</b> {conn_line}\n"
         f"<b>Авторизация:</b> {'успешно' if status.auth_available else ('ошибка' if status.auth_available is False else 'нет данных')}\n"
-        f"<b>Ping (ICMP):</b> {_format_ms(status.ping_ms)}\n"
+        f"<b>Ping:</b> {_format_ms(status.ping_ms)}\n"
         f"<b>Задержка (TCP):</b> {_format_ms(status.tcp_latency_ms)}\n"
-        f"<b>Пинг Telegram через SOCKS5:</b> {_format_ms(status.telegram_latency_ms)}\n"
         f"<b>Порт SOCKS5:</b> <code>{status.host}:{status.port}</code>\n"
         f"<b>Последняя проверка:</b> <code>{checked_at}</code>\n\n"
         f"{comment}"
     )
+
+    
 def status_text(sub: Subscription) -> str:
     return (
         f"<b>{settings.bot_brand}</b>\n\n"
