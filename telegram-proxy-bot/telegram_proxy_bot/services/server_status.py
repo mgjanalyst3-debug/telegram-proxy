@@ -25,6 +25,7 @@ class ServerStatus:
     auth_available: bool | None
 
 
+
 async def _measure_ping_ms(host: str, timeout_seconds: int = 2) -> float | None:
     try:
         proc = await asyncio.create_subprocess_exec(
