@@ -41,7 +41,7 @@ async def _ensure_not_banned(target: Message | CallbackQuery, user: User) -> boo
         return True
     await answer_screen(
         target,
-        "Р’Р°С€ Р°РєРєР°СѓРЅС‚ РІСЂРµРјРµРЅРЅРѕ Р·Р°Р±Р»РѕРєРёСЂРѕРІР°РЅ. Р”Р»СЏ СѓС‚РѕС‡РЅРµРЅРёСЏ РґРµС‚Р°Р»РµР№ РѕР±СЂР°С‚РёС‚РµСЃСЊ РІ РїРѕРґРґРµСЂР¶РєСѓ.",
+        "Ваш аккаунт временно заблокирован. Для уточнения деталей обратитесь в поддержку.",
         back_keyboard(),
     )
     return False
@@ -55,36 +55,36 @@ async def handle_trial(target: Message | CallbackQuery, user: User) -> None:
     if current:
         await answer_screen(
             target,
-            "РЈ РІР°СЃ СѓР¶Рµ РµСЃС‚СЊ Р°РєС‚РёРІРЅС‹Р№ РґРѕСЃС‚СѓРї. РћС‚РєСЂРѕР№С‚Рµ СЂР°Р·РґРµР» В«рџ“¦ РњРѕР№ РґРѕСЃС‚СѓРїВ».",
+            "У вас уже есть активный доступ. Откройте раздел «📦 Мой доступ».",
             menu_keyboard(user.id),
         )
         return
     if has_used_trial(user.id):
         await answer_screen(
             target,
-            "РџСЂРѕР±РЅР°СЏ РїРѕРґРїРёСЃРєР° СѓР¶Рµ Р±С‹Р»Р° РёСЃРїРѕР»СЊР·РѕРІР°РЅР°. Р’С‹ РјРѕР¶РµС‚Рµ РїРµСЂРµР№С‚Рё Рє РѕРїР»Р°С‚Рµ Рё СЃСЂР°Р·Сѓ Р°РєС‚РёРІРёСЂРѕРІР°С‚СЊ РїРѕРґРїРёСЃРєСѓ.",
+            "Пробная подписка уже была использована. Вы можете перейти к оплате и сразу активировать подписку.",
             menu_keyboard(user.id),
         )
         return
     try:
-        sub = issue_or_extend_subscription(user.id, plan="РїСЂРѕР±РЅР°СЏ РїРѕРґРїРёСЃРєР°", hours=settings.trial_hours)
+        sub = issue_or_extend_subscription(user.id, plan="пробная подписка", hours=settings.trial_hours)
     except Exception as exc:
-        logger.exception("РќРµ СѓРґР°Р»РѕСЃСЊ РІС‹РґР°С‚СЊ trial: %s", exc)
+        logger.exception("Не удалось выдать trial: %s", exc)
         await answer_screen(
             target,
-            "РќРµ СѓРґР°Р»РѕСЃСЊ Р°РєС‚РёРІРёСЂРѕРІР°С‚СЊ РїСЂРѕР±РЅС‹Р№ РґРѕСЃС‚СѓРї. РџРѕРїСЂРѕР±СѓР№С‚Рµ РµС‰Рµ СЂР°Р· РёР»Рё РЅР°РїРёС€РёС‚Рµ РІ РїРѕРґРґРµСЂР¶РєСѓ.",
+            "Не удалось активировать пробный доступ. Попробуйте еще раз или напишите в поддержку.",
             menu_keyboard(user.id),
         )
         return
     mark_trial_used(user.id)
-    write_audit(user.id, sub.username, "trial_issued", f"РІС‹РґР°РЅ РїСЂРѕР±РЅС‹Р№ РґРѕСЃС‚СѓРї РЅР° {settings.trial_hours} С‡")
+    write_audit(user.id, sub.username, "trial_issued", f"выдан пробный доступ на {settings.trial_hours} ч")
     await answer_screen(target, trial_activated_text(sub), access_keyboard(sub))
 
 
 async def send_access(target: Message | CallbackQuery, user_id: int) -> None:
     sub = get_active_subscription(user_id)
     if not sub:
-        await answer_screen(target, "РЎРµР№С‡Р°СЃ Сѓ РІР°СЃ РЅРµС‚ Р°РєС‚РёРІРЅРѕР№ РїРѕРґРїРёСЃРєРё.", back_keyboard())
+        await answer_screen(target, "Сейчас у вас нет активной подписки.", back_keyboard())
         return
     await answer_screen(target, access_text(sub), access_keyboard(sub))
 
@@ -92,7 +92,7 @@ async def send_access(target: Message | CallbackQuery, user_id: int) -> None:
 async def send_status(target: Message | CallbackQuery, user_id: int) -> None:
     sub = get_active_subscription(user_id)
     if not sub:
-        await answer_screen(target, "РЎРµР№С‡Р°СЃ Сѓ РІР°СЃ РЅРµС‚ Р°РєС‚РёРІРЅРѕР№ РїРѕРґРїРёСЃРєРё.", back_keyboard())
+        await answer_screen(target, "Сейчас у вас нет активной подписки.", back_keyboard())
         return
     await answer_screen(target, status_text(sub), back_keyboard())
 
@@ -207,14 +207,14 @@ async def on_setup(callback: CallbackQuery) -> None:
 @router.callback_query(F.data == "server_status")
 async def on_server_status(callback: CallbackQuery) -> None:
     try:
-        await callback.answer("РџСЂРѕРІРµСЂСЏСЋ СЃРµСЂРІРµСЂвЂ¦")
+        await callback.answer("Проверяю сервер…")
     except Exception:
         pass
     sub = get_active_subscription(callback.from_user.id)
     if not sub:
         await answer_screen(
             callback,
-            "РЎРµР№С‡Р°СЃ Сѓ РІР°СЃ РЅРµС‚ Р°РєС‚РёРІРЅРѕРіРѕ РґРѕСЃС‚СѓРїР°. РђРєС‚РёРІРёСЂСѓР№С‚Рµ РїСЂРѕР±РЅСѓСЋ РїРѕРґРїРёСЃРєСѓ РёР»Рё РѕС„РѕСЂРјРёС‚Рµ РїРѕРґРїРёСЃРєСѓ, С‡С‚РѕР±С‹ РїСЂРѕРІРµСЂРёС‚СЊ РІР°С€ РєРѕРЅРєСЂРµС‚РЅС‹Р№ РїСЂРѕРєСЃРё.",
+            "Сейчас у вас нет активного доступа. Активируйте пробную подписку или оформите подписку, чтобы проверить ваш конкретный прокси.",
             back_keyboard(),
         )
         return
@@ -238,7 +238,7 @@ async def on_create_ticket(callback: CallbackQuery) -> None:
     create_ticket_draft(callback.from_user.id)
     await answer_screen(
         callback,
-        "<b>рџЋ« РќРѕРІС‹Р№ С‚РёРєРµС‚</b>\n\nРћРїРёС€РёС‚Рµ РїСЂРѕР±Р»РµРјСѓ РѕРґРЅРёРј СЃРѕРѕР±С‰РµРЅРёРµРј. РџРѕСЃР»Рµ РѕС‚РїСЂР°РІРєРё С‚РёРєРµС‚ Р±СѓРґРµС‚ СЃРѕР·РґР°РЅ Рё РїРµСЂРµРґР°РЅ Р°РґРјРёРЅРёСЃС‚СЂР°С‚РѕСЂСѓ.",
+        "<b>🎫 Новый тикет</b>\n\nОпишите проблему одним сообщением. После отправки тикет будет создан и передан администратору.",
         back_keyboard(),
     )
 
@@ -253,7 +253,7 @@ async def on_ticket_message(message: Message, bot: Bot) -> None:
 
     text = (message.text or "").strip()
     if not text:
-        await message.answer("РџРѕР¶Р°Р»СѓР№СЃС‚Р°, РѕС‚РїСЂР°РІСЊС‚Рµ С‚РµРєСЃС‚РѕРІРѕРµ РѕРїРёСЃР°РЅРёРµ РїСЂРѕР±Р»РµРјС‹ РѕРґРЅРёРј СЃРѕРѕР±С‰РµРЅРёРµРј.")
+        await message.answer("Пожалуйста, отправьте текстовое описание проблемы одним сообщением.")
         return
 
     ticket_id = create_ticket(message.from_user.id, text)
@@ -267,21 +267,21 @@ async def on_ticket_message(message: Message, bot: Bot) -> None:
             await bot.send_message(
                 admin_id,
                 (
-                    "<b>рџЋ« РќРѕРІС‹Р№ С‚РёРєРµС‚</b>\n\n"
+                    "<b>🎫 Новый тикет</b>\n\n"
                     f"<b>ID:</b> <code>{ticket_id}</code>\n"
                     f"<b>User ID:</b> <code>{message.from_user.id}</code>\n"
-                    f"<b>РџРѕР»СЊР·РѕРІР°С‚РµР»СЊ:</b> <code>{user_name}</code>\n"
+                    f"<b>Пользователь:</b> <code>{user_name}</code>\n"
                     f"<b>Username:</b> <code>{username}</code>\n\n"
-                    f"<b>РЎРѕРѕР±С‰РµРЅРёРµ:</b>\n{text}\n\n"
-                    f"РћС‚РІРµС‚: <code>/reply {ticket_id} С‚РµРєСЃС‚</code>\n"
-                    f"Р—Р°РєСЂС‹С‚СЊ: <code>/close {ticket_id}</code>"
+                    f"<b>Сообщение:</b>\n{text}\n\n"
+                    f"Ответ: <code>/reply {ticket_id} текст</code>\n"
+                    f"Закрыть: <code>/close {ticket_id}</code>"
                 ),
             )
         except Exception:
-            logger.exception("РќРµ СѓРґР°Р»РѕСЃСЊ РѕС‚РїСЂР°РІРёС‚СЊ С‚РёРєРµС‚ %s Р°РґРјРёРЅСѓ %s", ticket_id, admin_id)
+            logger.exception("Не удалось отправить тикет %s админу %s", ticket_id, admin_id)
 
     await message.answer(
-        f"вњ… РўРёРєРµС‚ <code>#{ticket_id}</code> СЃРѕР·РґР°РЅ. РњС‹ РѕС‚РІРµС‚РёРј РІ СЌС‚РѕРј С‡Р°С‚Рµ.",
+        f"✅ Тикет <code>#{ticket_id}</code> создан. Мы ответим в этом чате.",
         reply_markup=menu_keyboard(message.from_user.id),
     )
 
@@ -295,37 +295,37 @@ async def on_noop(callback: CallbackQuery) -> None:
 async def on_show_username(callback: CallbackQuery) -> None:
     sub = get_active_subscription(callback.from_user.id)
     if not sub:
-        await callback.answer("РЈ РІР°СЃ РЅРµС‚ Р°РєС‚РёРІРЅРѕРіРѕ РґРѕСЃС‚СѓРїР°.", show_alert=True)
+        await callback.answer("У вас нет активного доступа.", show_alert=True)
         return
-    await callback.answer(f"Р›РѕРіРёРЅ: {sub.username}", show_alert=True)
+    await callback.answer(f"Логин: {sub.username}", show_alert=True)
 
 
 @router.callback_query(F.data == "show_password")
 async def on_show_password(callback: CallbackQuery) -> None:
     sub = get_active_subscription(callback.from_user.id)
     if not sub:
-        await callback.answer("РЈ РІР°СЃ РЅРµС‚ Р°РєС‚РёРІРЅРѕРіРѕ РґРѕСЃС‚СѓРїР°.", show_alert=True)
+        await callback.answer("У вас нет активного доступа.", show_alert=True)
         return
-    await callback.answer(f"РџР°СЂРѕР»СЊ: {sub.password}", show_alert=True)
+    await callback.answer(f"Пароль: {sub.password}", show_alert=True)
 
 
 @router.callback_query(F.data == "reissue_token")
 async def on_reissue_token(callback: CallbackQuery) -> None:
     sub = get_active_subscription(callback.from_user.id)
     if not sub:
-        await callback.answer("РЈ РІР°СЃ РЅРµС‚ Р°РєС‚РёРІРЅРѕРіРѕ РґРѕСЃС‚СѓРїР°.", show_alert=True)
+        await callback.answer("У вас нет активного доступа.", show_alert=True)
         return
 
     recent_reissues = count_recent_user_actions(callback.from_user.id, "user_token_reissue", hours=24)
     if recent_reissues >= 2:
-        await callback.answer("Р›РёРјРёС‚ РїРµСЂРµРІС‹РїСѓСЃРєР° С‚РѕРєРµРЅР°: 2 СЂР°Р·Р° Р·Р° 24 С‡Р°СЃР°.", show_alert=True)
+        await callback.answer("Лимит перевыпуска токена: 2 раза за 24 часа.", show_alert=True)
         return
 
     new_sub = reissue_subscription_credentials(callback.from_user.id)
     if not new_sub:
-        await callback.answer("РќРµ СѓРґР°Р»РѕСЃСЊ РїРµСЂРµРІС‹РїСѓСЃС‚РёС‚СЊ С‚РѕРєРµРЅ. РџРѕРїСЂРѕР±СѓР№С‚Рµ РїРѕР·Р¶Рµ.", show_alert=True)
+        await callback.answer("Не удалось перевыпустить токен. Попробуйте позже.", show_alert=True)
         return
 
-    write_audit(callback.from_user.id, new_sub.username, "user_token_reissue", "РїРµСЂРµРІС‹РїСѓСЃРє РёР· СЂР°Р·РґРµР»Р° РњРѕР№ РґРѕСЃС‚СѓРї")
-    await callback.answer("РўРѕРєРµРЅ РїРµСЂРµРІС‹РїСѓС‰РµРЅ. РЎС‚Р°СЂРѕРµ РїРѕРґРєР»СЋС‡РµРЅРёРµ РѕС‚РєР»СЋС‡РµРЅРѕ.", show_alert=True)
+    write_audit(callback.from_user.id, new_sub.username, "user_token_reissue", "перевыпуск из раздела Мой доступ")
+    await callback.answer("Токен перевыпущен. Старое подключение отключено.", show_alert=True)
     await answer_screen(callback, access_text(new_sub), access_keyboard(new_sub))
