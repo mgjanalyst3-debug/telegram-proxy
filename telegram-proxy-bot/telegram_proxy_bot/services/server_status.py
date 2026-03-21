@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from __future__ import annotations
+
 import asyncio
 import re
 from dataclasses import dataclass
@@ -23,8 +25,7 @@ class ServerStatus:
     telegram_latency_ms: float | None
     tcp_available: bool
     auth_available: bool | None
-
-
+    
 
 async def _measure_ping_ms(host: str, timeout_seconds: int = 2) -> float | None:
     try:
