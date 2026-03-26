@@ -119,7 +119,7 @@ async def cmd_buy(message: Message) -> None:
     upsert_user(message.from_user.id, message.from_user.username, message.from_user.first_name)
     if not await _ensure_not_banned(message, message.from_user):
         return
-    await message.answer(buy_text(), reply_markup=buy_keyboard("socks5"))
+    await message.answer(buy_text(), reply_markup=buy_keyboard())
 
 
 @router.message(Command("myproxy"))
@@ -159,30 +159,15 @@ async def on_trial(callback: CallbackQuery) -> None:
 async def on_buy(callback: CallbackQuery) -> None:
     if not await _ensure_not_banned(callback, callback.from_user):
         return
-    await answer_screen(callback, buy_text(), buy_keyboard("socks5"))
+    await answer_screen(callback, buy_text(), buy_keyboard())
 
 
-@router.callback_query(F.data.startswith("buy_protocol:"))
-async def on_buy_protocol(callback: CallbackQuery) -> None:
-    if not await _ensure_not_banned(callback, callback.from_user):
-        return
-    selected = (callback.data or "").split(":", 1)[1]
-    if selected not in {"socks5", "http"}:
-        selected = "socks5"
-    await answer_screen(callback, buy_text(selected), buy_keyboard(selected))
-
-
-@router.callback_query(F.data.startswith("pay_stars"))
+@router.callback_query(F.data == "pay_stars")
 async def on_pay_stars(callback: CallbackQuery, bot: Bot) -> None:
     if not await _ensure_not_banned(callback, callback.from_user):
         return
     await callback.answer()
-    selected = "socks5"
-    if callback.data and ":" in callback.data:
-        selected = callback.data.split(":", 1)[1]
-    if selected not in {"socks5", "http"}:
-        selected = "socks5"
-    await send_stars_invoice(callback.message.chat.id, callback.from_user, bot, proxy_type=selected)
+    await send_stars_invoice(callback.message.chat.id, callback.from_user, bot, proxy_type="mtproto")
 
 
 @router.callback_query(F.data == "my_access")
