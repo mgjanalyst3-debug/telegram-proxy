@@ -84,3 +84,5 @@ def load_settings() -> Settings:
         default_connections_limit=int(os.getenv("DEFAULT_CONNECTIONS_LIMIT", "2")),
         default_devices_limit=int(os.getenv("DEFAULT_DEVICES_LIMIT", "2")),
     )
+    
+settings = load_settings()
