@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import re
 import secrets
 from datetime import datetime, timezone
@@ -58,12 +57,14 @@ def _normalize_mtproto_secret(raw_secret: str) -> str:
     candidate = (raw_secret or "").strip()
     if _MT_SECRET_RE.fullmatch(candidate) and len(candidate) % 2 == 0:
         return candidate.lower()
-    # Для legacy-значений превращаем пароль в стабильный валидный secret.
-    return hashlib.sha256(candidate.encode("utf-8")).hexdigest()[:32]
+    return ""
 
 
-def get_mtproto_url(sub: Subscription) -> str:
-    secret = _normalize_mtproto_secret(sub.password)
+def get_mtproto_url(sub: Subscription) -> str | None:
+    secret_source = sub.secret or settings.mtproto_secret or sub.password
+    secret = _normalize_mtproto_secret(secret_source)
+    if not secret:
+        return None
     return (
         "https://t.me/proxy?"
         f"server={sub.host}&port={sub.port}"
