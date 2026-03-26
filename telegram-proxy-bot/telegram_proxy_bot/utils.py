@@ -21,12 +21,15 @@ def now_iso() -> str:
     return now_utc().isoformat()
 
 
-
 def parse_dt(value: str) -> datetime:
     dt = datetime.fromisoformat(value)
     if dt.tzinfo is None:
-@@ -36,44 +35,46 @@ def format_dt(value: str) -> str:
+        dt = dt.replace(tzinfo=UTC)
+    return dt.astimezone(UTC)
 
+
+def format_dt(value: str) -> str:
+    return parse_dt(value).astimezone(settings.display_tz).strftime("%d.%m.%Y %H:%M")
 
 
 def build_username(user_id: int) -> str:
