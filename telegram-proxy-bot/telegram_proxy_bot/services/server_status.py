@@ -60,3 +60,30 @@ async def _measure_tcp_latency_ms(host: str, port: int, timeout_seconds: float =
         return True, latency_ms
     except Exception:
         return False, None
+
+
+async def get_server_status(host: str, port: int) -> ServerStatus:
+    ping_task = asyncio.create_task(_measure_ping_ms(host))
+    tcp_task = asyncio.create_task(_measure_tcp_latency_ms(host, port))
+
+    ping_ms = await ping_task
+    tcp_available, tcp_latency_ms = await tcp_task
+
+    # Для MTProto здесь достаточно проверки TCP-доступности порта.
+    # Валидировать handshake/secret без полноценного клиента небезопасно и хрупко,
+    # поэтому признак авторизации оставляем как "нет данных" при недоступности метрики.
+    auth_available = True if tcp_available else False
+
+    return ServerStatus(
+        host=host,
+        port=port,
+        checked_at=now_utc(),
+        ping_ms=ping_ms,
+        tcp_latency_ms=tcp_latency_ms,
+        telegram_latency_ms=tcp_latency_ms,
+        tcp_available=tcp_available,
+        auth_available=auth_available,
+    )
+
+
+__all__ = ["ServerStatus", "get_server_status"]
