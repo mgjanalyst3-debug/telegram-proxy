@@ -13,6 +13,7 @@ class Subscription:
     port: int
     username: str
     password: str
+    secret: str
     status: str
     issued_at: str
     expires_at: str
