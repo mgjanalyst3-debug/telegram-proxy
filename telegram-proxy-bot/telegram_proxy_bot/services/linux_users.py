@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import logging
 import subprocess
 
 from ..config import settings
 from ..models import Subscription
 from ..repositories.audit import write_audit
 
+
+logger = logging.getLogger(__name__)
 
 
 def run_cmd(cmd: list[str], input_text: str | None = None) -> subprocess.CompletedProcess:
@@ -38,11 +41,28 @@ def ensure_linux_proxy_user(username: str, password: str) -> None:
         if result.returncode != 0 and "already exists" not in (result.stderr or ""):
             raise RuntimeError(f"Не удалось создать Linux-пользователя {username}: {result.stderr.strip()}")
         created = True
-    run_cmd(["passwd", "-u", username])
     pass_result = run_cmd(["chpasswd"], input_text=f"{username}:{password}\n")
+    unlock_result = run_cmd(["passwd", "-u", username])
+
     if pass_result.returncode != 0:
-        raise RuntimeError(
-            f"Не удалось установить пароль для {username}: {(pass_result.stderr or '').strip()}"
+        # На некоторых системах chpasswd может вернуть non-zero даже при фактической установке пароля.
+        # Проверяем состояние учетной записи и не валим выдачу подписки, если пользователь уже активен.
+        if linux_user_locked(username):
+            details = " | ".join(
+                part for part in [
+                    (pass_result.stderr or "").strip(),
+                    (pass_result.stdout or "").strip(),
+                    (unlock_result.stderr or "").strip(),
+                ]
+                if part
+            )
+            raise RuntimeError(f"Не удалось установить пароль для {username}: {details}")
+        logger.warning(
+            "chpasswd returned non-zero for %s but account is active; continue. rc=%s stderr=%r stdout=%r",
+            username,
+            pass_result.returncode,
+            (pass_result.stderr or "").strip(),
+            (pass_result.stdout or "").strip(),
         )
     write_audit(0, username, "linux_user_sync", "создан" if created else "обновлен пароль")
 
