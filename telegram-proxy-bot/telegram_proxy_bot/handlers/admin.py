@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from html import escape
+
 from aiogram import Bot, F, Router
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
@@ -294,6 +296,8 @@ async def cmd_refund(message: Message) -> None:
         return
     write_audit(target_user_id, "-", "refund", f"payment_id={payment_id}")
     await message.answer(f"Платеж #{payment_id} отмечен как refunded.")
+
+
 @router.message(Command("reply"))
 async def cmd_reply(message: Message, bot: Bot) -> None:
     if not await _admin_only(message):
@@ -313,7 +317,7 @@ async def cmd_reply(message: Message, bot: Bot) -> None:
         ticket["user_id"],
         (
             f"<b>💬 Ответ по тикету #{ticket_id}</b>\n\n"
-            f"{reply_text}\n\n"
+            f"{escape(reply_text)}\n\n"
             "Если вопрос решен — можете ничего не делать. Иначе создайте новый тикет через раздел поддержки."
         ),
     )
@@ -362,11 +366,11 @@ async def cmd_user(message: Message) -> None:
     lines = [
         "<b>👤 Карточка пользователя</b>",
         f"ID: <code>{user['user_id']}</code>",
-        f"Username: <code>{user['username'] or '-'}</code>",
-        f"Имя: <code>{user['first_name'] or '-'}</code>",
+        f"Username: <code>{escape(user['username'] or '-')}</code>",
+        f"Имя: <code>{escape(user['first_name'] or '-')}</code>",
         f"Trial used: <code>{'да' if user['trial_used'] else 'нет'}</code>",
         f"Бан: <code>{'да' if user['is_banned'] else 'нет'}</code>",
-        f"Заметка: <code>{user['admin_note'] or '-'}</code>",
+        f"Заметка: <code>{escape(user['admin_note'] or '-')}</code>",
         f"Создан: <code>{format_dt(user['created_at'])}</code>",
     ]
     if sub:
@@ -374,13 +378,12 @@ async def cmd_user(message: Message) -> None:
             [
                 "",
                 "<b>Активная подписка</b>",
-                f"Логин: <code>{sub.username}</code>",
+                f"Логин: <code>{escape(sub.username)}</code>",
                 f"Доступ до: <code>{format_dt(sub.expires_at)}</code>",
                 f"Лимиты: <code>{sub.connections_limit}</code>/<code>{sub.devices_limit}</code>",
             ]
         )
     await message.answer("\n".join(lines))
-
 
 @router.message(Command("ban"))
 async def cmd_ban(message: Message) -> None:
@@ -426,7 +429,7 @@ async def cmd_note(message: Message) -> None:
     await message.answer(f"Заметка для {target_user_id} сохранена.")
 
 
-@router.message(Command("users_active"))
+router.message(Command("users_active"))
 async def cmd_users_active(message: Message) -> None:
     if not await _admin_only(message):
         return
@@ -445,7 +448,7 @@ async def cmd_users_active(message: Message) -> None:
         return
     text = ["<b>✅ Активные пользователи</b>"]
     text.extend(
-        f"<code>{row['user_id']}</code> • <code>{row['username']}</code> • до {format_dt(row['expires_at'])}" for row in rows
+        f"<code>{row['user_id']}</code> • <code>{escape(row['username'] or '-')}</code> • до {format_dt(row['expires_at'])}" for row in rows
     )
     await message.answer("\n".join(text))
 
@@ -469,7 +472,7 @@ async def cmd_users_expired(message: Message) -> None:
         return
     text = ["<b>⌛ Истекшие пользователи</b>"]
     text.extend(
-        f"<code>{row['user_id']}</code> • <code>{row['username']}</code> • истекла {format_dt(row['expires_at'])}" for row in rows
+        f"<code>{row['user_id']}</code> • <code>{escape(row['username'] or '-')}</code> • истекла {format_dt(row['expires_at'])}" for row in rows
     )
     await message.answer("\n".join(text))
 
@@ -556,7 +559,7 @@ async def cmd_whoami(message: Message) -> None:
     await message.answer(
         "<b>👤 Кто я</b>\n\n"
         f"Ваш ID: <code>{message.from_user.id}</code>\n"
-        f"Username: <code>@{message.from_user.username or '-'}</code>\n"
+        f"Username: <code>@{escape(message.from_user.username or '-')}</code>\n"
         f"Админ: <code>{'да' if is_admin(message.from_user.id) else 'нет'}</code>"
     )
 
@@ -565,6 +568,9 @@ async def cmd_whoami(message: Message) -> None:
 async def cmd_star_balance(message: Message, bot: Bot) -> None:
     if not await _admin_only(message):
         return
+    await message.answer(await get_star_balance_text(bot))
+
+
 @router.message(Command("star_tx"))
 async def cmd_star_tx(message: Message, bot: Bot) -> None:
     if not await _admin_only(message):
@@ -574,7 +580,6 @@ async def cmd_star_tx(message: Message, bot: Bot) -> None:
     if len(parts) >= 2 and parts[1].isdigit():
         limit = max(1, min(20, int(parts[1])))
     await message.answer(await get_star_transactions_text(bot, limit=limit))
-
 
 @router.callback_query(F.data == "admin_panel")
 async def on_admin_panel(callback: CallbackQuery) -> None:
