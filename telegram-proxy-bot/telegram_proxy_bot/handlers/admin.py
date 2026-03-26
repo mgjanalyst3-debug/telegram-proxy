@@ -6,7 +6,7 @@ from aiogram.types import CallbackQuery, Message
 
 from ..config import settings
 from ..db import db
-from ..handlers.common import answer_screen
+from ..handlers.common import answer_screen, safe_callback_answer
 from ..repositories.audit import write_audit
 from ..repositories.tickets import add_admin_reply, close_ticket, get_open_ticket
 from ..services.payments import get_star_balance_text, get_star_transactions_text
@@ -52,7 +52,7 @@ async def _admin_only(message_or_callback: Message | CallbackQuery) -> bool:
     if is_admin(user_id):
         return True
     if isinstance(message_or_callback, CallbackQuery):
-        await message_or_callback.answer("Недостаточно прав.", show_alert=True)
+        await safe_callback_answer(message_or_callback, "Недостаточно прав.", show_alert=True)
     else:
         await message_or_callback.answer("Недостаточно прав.")
     return False
@@ -642,7 +642,7 @@ async def _send_xlsx(callback: CallbackQuery, filename: str, headers: list[str],
     if not await _admin_only(callback):
         return
     await callback.message.answer_document(xlsx_file_from_query(filename, headers, query), caption=f"Файл {filename} готов.")
-    await callback.answer()
+    await safe_callback_answer(callback)
 
 
 @router.callback_query(F.data == "export_users")
