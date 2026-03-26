@@ -48,7 +48,7 @@ def init_db() -> None:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 plan TEXT NOT NULL,
-                proxy_type TEXT NOT NULL DEFAULT 'socks5',
+                proxy_type TEXT NOT NULL DEFAULT 'mtproto',
                 host TEXT NOT NULL DEFAULT '',
                 port INTEGER NOT NULL DEFAULT 0,
                 username TEXT NOT NULL DEFAULT '',
@@ -129,7 +129,7 @@ def init_db() -> None:
         add_column_if_missing(conn, "users", "is_banned INTEGER NOT NULL DEFAULT 0", "is_banned")
         add_column_if_missing(conn, "users", "admin_note TEXT NOT NULL DEFAULT ''", "admin_note")
 
-        add_column_if_missing(conn, "subscriptions", "proxy_type TEXT NOT NULL DEFAULT 'socks5'", "proxy_type")
+        add_column_if_missing(conn, "subscriptions", "proxy_type TEXT NOT NULL DEFAULT 'mtproto'", "proxy_type")
         add_column_if_missing(conn, "subscriptions", "host TEXT NOT NULL DEFAULT ''", "host")
         add_column_if_missing(conn, "subscriptions", "port INTEGER NOT NULL DEFAULT 0", "port")
         add_column_if_missing(conn, "subscriptions", "username TEXT NOT NULL DEFAULT ''", "username")
@@ -154,15 +154,15 @@ def init_db() -> None:
         add_column_if_missing(conn, "payments", "refunded_at TEXT NOT NULL DEFAULT ''", "refunded_at")
 
         conn.execute(
-            "UPDATE subscriptions SET proxy_type='socks5' WHERE proxy_type IS NULL OR proxy_type=''"
+            "UPDATE subscriptions SET proxy_type='mtproto' WHERE proxy_type IS NULL OR proxy_type=''"
         )
         conn.execute(
             "UPDATE subscriptions SET host=? WHERE host IS NULL OR host=''",
-            (settings.socks5_host,),
+            (settings.mtproto_host,),
         )
         conn.execute(
             "UPDATE subscriptions SET port=? WHERE port IS NULL OR port=0",
-            (settings.socks5_port,),
+            (settings.mtproto_port,),
         )
         conn.execute("UPDATE subscriptions SET secret='' WHERE secret IS NULL")
         conn.execute(
