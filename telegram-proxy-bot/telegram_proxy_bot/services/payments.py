@@ -20,24 +20,24 @@ class PaymentHandlingResult:
 
 
 
-def create_invoice_payload(user_id: int, proxy_type: str = "socks5", prefix: str = "sub30") -> str:
+def create_invoice_payload(user_id: int, proxy_type: str = "mtproto", prefix: str = "sub30") -> str:
     return f"{prefix}_{proxy_type}_{user_id}_{token_urlsafe(8)}"
 
 
 def extract_proxy_type_from_payload(payload: str) -> str:
     parts = (payload or "").split("_")
-    if len(parts) >= 4 and parts[1] in {"socks5", "http"}:
+    if len(parts) >= 4 and parts[1] == "mtproto":
         return parts[1]
-    return "socks5"
+    return "mtproto"
 
 
-async def send_stars_invoice(chat_id: int, user: User, bot: Bot, proxy_type: str = "socks5") -> None:
+async def send_stars_invoice(chat_id: int, user: User, bot: Bot, proxy_type: str = "mtproto") -> None:
     payload = create_invoice_payload(user.id, proxy_type=proxy_type)
     payments_repo.create_payment_invoice(user.id, payload, settings.price_xtr, "XTR", "new")
     await bot.send_invoice(
         chat_id=chat_id,
         title=f"{settings.bot_brand} — 30 дней доступа",
-        description="Персональный SOCKS5-доступ на 30 дней.",
+        description="Персональный MTProto-доступ на 30 дней (порт 443).",
         payload=payload,
         provider_token="",
         currency="XTR",
