@@ -280,6 +280,7 @@ async def on_show_secret(callback: CallbackQuery) -> None:
     await safe_callback_answer(callback, f"MTProto secret: {sub.secret or sub.password}", show_alert=True)
 
 
+
 @router.callback_query(F.data == "reissue_token")
 async def on_reissue_token(callback: CallbackQuery) -> None:
     sub = get_active_subscription(callback.from_user.id)
