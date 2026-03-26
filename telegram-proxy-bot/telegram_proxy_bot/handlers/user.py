@@ -198,15 +198,7 @@ async def on_server_status(callback: CallbackQuery) -> None:
         await safe_callback_answer(callback, "Проверяю сервер…")
     except Exception:
         pass
-    sub = get_active_subscription(callback.from_user.id)
-    if not sub:
-        await answer_screen(
-            callback,
-            "Сейчас у вас нет активного доступа. Активируйте пробную подписку или оформите подписку, чтобы проверить ваш конкретный прокси.",
-            back_keyboard(),
-        )
-        return
-    status = await get_server_status(sub)
+    status = await get_server_status(settings.mtproto_host, settings.mtproto_port)
     await answer_screen(callback, server_status_text(status), back_keyboard())
 
 
