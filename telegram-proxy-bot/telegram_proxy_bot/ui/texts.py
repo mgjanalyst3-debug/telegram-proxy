@@ -104,6 +104,28 @@ def subscription_text(sub: Subscription) -> str:
 
 
 
+def subscription_text(sub: Subscription) -> str:
+    connect_url = get_proxy_connect_url(sub)
+    quick_link = f"<b>Быстрая ссылка:</b>\n{connect_url}\n\n" if connect_url else ""
+    secret = sub.secret or sub.password
+    return (
+        f"<b>{settings.bot_brand}</b>\n\n"
+        "Ваш персональный доступ готов.\n\n"
+        "👉 Если не удалось подключиться — нажмите «Подключить прокси» ещё раз.\n\n"
+        f"<b>Протокол:</b> {proxy_type_label(sub.proxy_type)}\n"
+        f"<b>Сервер:</b> <code>{sub.host}</code>\n"
+        f"<b>Порт:</b> <code>{sub.port}</code>\n"
+        f"<b>Secret (токен):</b> <code>{secret}</code>\n"
+        f"<b>Тариф:</b> <code>{sub.plan}</code>\n"
+        f"<b>Доступ до:</b> <code>{format_dt(sub.expires_at)}</code>\n"
+        f"<b>Лимит подключений:</b> <code>{sub.connections_limit}</code>\n"
+        f"<b>Лимит устройств:</b> <code>{sub.devices_limit}</code>\n\n"
+        f"{quick_link}"
+        "Это персональный доступ. Пожалуйста, не передавайте его другим людям."
+    )
+
+
+
 def access_text(sub: Subscription) -> str:
     connect_url = get_proxy_connect_url(sub)
     quick_link = f"<b>Быстрая ссылка:</b>\n{connect_url}\n\n" if connect_url else ""
@@ -119,7 +141,7 @@ def access_text(sub: Subscription) -> str:
         f"<b>Лимит подключений:</b> <code>{sub.connections_limit}</code>\n"
         f"<b>Лимит устройств:</b> <code>{sub.devices_limit}</code>\n\n"
         f"{quick_link}"
-        "Чтобы не показывать логин и пароль в сообщении, их можно открыть отдельными кнопками ниже."
+        "При необходимости нажмите кнопку ниже, чтобы посмотреть MTProto secret."
     )
 
 def _format_ms(value: float | None) -> str:
@@ -127,12 +149,6 @@ def _format_ms(value: float | None) -> str:
         return "нет данных"
     if 0 < value < 1:
         return "<1 мс"
-    return f"{int(round(value))} мс"
-
-
-def _format_ms(value: float | None) -> str:
-    if value is None:
-        return "нет данных"
     return f"{int(round(value))} мс"
 
 
