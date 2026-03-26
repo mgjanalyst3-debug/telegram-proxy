@@ -47,9 +47,9 @@ def normalize_legacy_subscription_row(row) -> Subscription:
     needs_update = False
     username = row["username"] or build_username(row["user_id"])
     password = row["password"] or build_password()
-    host = row["host"] or settings.socks5_host
-    port = row["port"] or settings.socks5_port
-    proxy_type = row["proxy_type"] or "socks5"
+    host = row["host"] or settings.mtproto_host
+    port = row["port"] or settings.mtproto_port
+    proxy_type = row["proxy_type"] or "mtproto"
     issued_at = row["issued_at"] or row["expires_at"]
     plan = row["plan"]
     connections_limit = row["connections_limit"] or settings.default_connections_limit
