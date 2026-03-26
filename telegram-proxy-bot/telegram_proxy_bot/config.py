@@ -5,8 +5,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-
-
 def load_env_file(path: str | Path = ".env") -> None:
     env_path = Path(path)
     if not env_path.exists():
@@ -30,12 +28,10 @@ class Settings:
     bot_token: str
     admin_ids: set[int]
     db_path: Path
-    socks5_host: str
-    socks5_port: int
-    http_host: str
-    http_port: int
-    socks5_username_prefix: str
-    socks5_password_length: int
+    mtproto_host: str
+    mtproto_port: int
+    mtproto_username_prefix: str
+    mtproto_token_length: int
     linux_proxy_users_enabled: bool
     linux_proxy_shell: str
     trial_hours: int
@@ -69,12 +65,10 @@ def load_settings() -> Settings:
         bot_token=os.getenv("BOT_TOKEN", ""),
         admin_ids=_parse_admin_ids(os.getenv("ADMIN_IDS", "")),
         db_path=Path(os.getenv("DB_PATH", "proxy_bot.sqlite3")),
-        socks5_host=os.getenv("SOCKS5_HOST", "127.0.0.1"),
-        socks5_port=int(os.getenv("SOCKS5_PORT", "1080")),
-        http_host=os.getenv("HTTP_PROXY_HOST", os.getenv("SOCKS5_HOST", "127.0.0.1")),
-        http_port=int(os.getenv("HTTP_PROXY_PORT", os.getenv("SOCKS5_PORT", "1080"))),
-        socks5_username_prefix=os.getenv("SOCKS5_USERNAME_PREFIX", "px"),
-        socks5_password_length=int(os.getenv("SOCKS5_PASSWORD_LENGTH", "14")),
+        mtproto_host=os.getenv("MTPROTO_HOST", os.getenv("SOCKS5_HOST", "127.0.0.1")),
+        mtproto_port=int(os.getenv("MTPROTO_PORT", os.getenv("SOCKS5_PORT", "443"))),
+        mtproto_username_prefix=os.getenv("MTPROTO_USERNAME_PREFIX", os.getenv("SOCKS5_USERNAME_PREFIX", "px")),
+        mtproto_token_length=int(os.getenv("MTPROTO_TOKEN_LENGTH", os.getenv("SOCKS5_PASSWORD_LENGTH", "14"))),
         linux_proxy_users_enabled=os.getenv("LINUX_PROXY_USERS_ENABLED", "1") == "1",
         linux_proxy_shell=os.getenv("LINUX_PROXY_SHELL", "/usr/sbin/nologin"),
         trial_hours=int(os.getenv("TRIAL_HOURS", "168")),
@@ -90,5 +84,3 @@ def load_settings() -> Settings:
         default_connections_limit=int(os.getenv("DEFAULT_CONNECTIONS_LIMIT", "2")),
         default_devices_limit=int(os.getenv("DEFAULT_DEVICES_LIMIT", "2")),
     )
-
-settings = load_settings()
