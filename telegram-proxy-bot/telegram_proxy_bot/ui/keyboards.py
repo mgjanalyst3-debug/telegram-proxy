@@ -14,12 +14,7 @@ def access_keyboard(sub: Subscription) -> InlineKeyboardMarkup:
     connect_url = get_proxy_connect_url(sub)
     if connect_url:
         rows.append([InlineKeyboardButton(text="🔗 Подключить прокси", url=connect_url)])
-    rows.append(
-        [
-            InlineKeyboardButton(text="👤 Показать логин", callback_data="show_username"),
-            InlineKeyboardButton(text="🔑 Показать пароль", callback_data="show_password"),
-        ]
-    )
+    rows.append([InlineKeyboardButton(text="🔑 Показать MTProto secret", callback_data="show_secret")])
     rows.append([InlineKeyboardButton(text="🔄 Перевыпустить токен", callback_data="reissue_token")])
     rows.append(
         [
@@ -28,7 +23,6 @@ def access_keyboard(sub: Subscription) -> InlineKeyboardMarkup:
         ]
     )
     return InlineKeyboardMarkup(inline_keyboard=rows)
-
 
 def admin_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
