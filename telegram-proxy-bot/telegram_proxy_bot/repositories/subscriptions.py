@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Iterable, Optional
 
 from .base import db_context
@@ -18,6 +19,13 @@ _SUBSCRIPTION_SELECT_RAW = (
 SUBSCRIPTION_SELECT = (
     "".join(_SUBSCRIPTION_SELECT_RAW) if isinstance(_SUBSCRIPTION_SELECT_RAW, tuple) else _SUBSCRIPTION_SELECT_RAW
 )
+
+_MT_SECRET_RE = re.compile(r"^[0-9a-fA-F]{32,}$")
+
+
+def _is_valid_mtproto_secret(value: str) -> bool:
+    secret = (value or "").strip()
+    return bool(secret) and len(secret) % 2 == 0 and _MT_SECRET_RE.fullmatch(secret) is not None
 
 
 def _row_value(row, key: str, default=""):
@@ -52,7 +60,10 @@ def normalize_legacy_subscription_row(row) -> Subscription:
     needs_update = False
     username = row["username"] or build_username(row["user_id"])
     password = row["password"] or build_password()
-    secret = _row_value(row, "secret") or settings.mtproto_secret
+    secret = _row_value(row, "secret") or settings.mtproto_secret or password
+    if not _is_valid_mtproto_secret(secret):
+        secret = build_password()
+        needs_update = True
     host = row["host"] or settings.mtproto_host
     port = row["port"] or settings.mtproto_port
     proxy_type = "mtproto"
@@ -78,26 +89,7 @@ def normalize_legacy_subscription_row(row) -> Subscription:
         or row["port"] != settings.mtproto_port
     ):
         needs_update = True
-
-
-
-    if needs_update:
-        with db_context() as conn:
-            conn.execute(
-                """
-                UPDATE subscriptions
-                SET plan=?, proxy_type=?, host=?, port=?, username=?, password=?, issued_at=?, secret=?,
-                    connections_limit=?, devices_limit=?
-                WHERE id=?
-                """,
-                (
-                    plan,
-                    proxy_type,
-                    host,
-                    port,
-                    username,
-                    password,
-                    issued_at,
+@@ -101,51 +112,51 @@ def normalize_legacy_subscription_row(row) -> Subscription:
                     secret,
                     connections_limit,
                     devices_limit,
@@ -129,7 +121,6 @@ def get_latest_active_subscription_raw(user_id: int) -> Optional[Subscription]:
     if not row:
         return None
     return normalize_legacy_subscription_row(row)
-
 
 
 
