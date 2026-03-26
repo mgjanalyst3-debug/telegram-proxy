@@ -9,7 +9,7 @@ from ..utils import build_password, build_username
 
 
 SUBSCRIPTION_SELECT = (
-    "SELECT id, user_id, plan, proxy_type, host, port, username, password, status, issued_at, expires_at, "
+    "SELECT id, user_id, plan, proxy_type, host, port, username, password, secret, status, issued_at, expires_at, "
     "connections_limit, devices_limit, remind_24_sent_at, remind_1_sent_at, expired_notice_sent_at "
     "FROM subscriptions"
 )
@@ -17,9 +17,6 @@ SUBSCRIPTION_SELECT = (
 
 def _row_value(row, key: str, default=""):
     return row[key] if key in row.keys() else default
-
-
-
 
 def _row_to_subscription(row) -> Subscription:
     return Subscription(
@@ -31,6 +28,7 @@ def _row_to_subscription(row) -> Subscription:
         port=row["port"],
         username=row["username"],
         password=row["password"],
+        secret=_row_value(row, "secret"),
         status=row["status"],
         issued_at=row["issued_at"],
         expires_at=row["expires_at"],
@@ -47,6 +45,7 @@ def normalize_legacy_subscription_row(row) -> Subscription:
     needs_update = False
     username = row["username"] or build_username(row["user_id"])
     password = row["password"] or build_password()
+    secret = _row_value(row, "secret") or settings.mtproto_secret
     host = row["host"] or settings.mtproto_host
     port = row["port"] or settings.mtproto_port
     proxy_type = "mtproto"
@@ -64,6 +63,7 @@ def normalize_legacy_subscription_row(row) -> Subscription:
         or not row["password"]
         or not row["host"]
         or not row["port"]
+        or (settings.mtproto_secret and secret != settings.mtproto_secret)
         or row["proxy_type"] != "mtproto"
         or not row["issued_at"]
         or not row["connections_limit"]
@@ -79,7 +79,7 @@ def normalize_legacy_subscription_row(row) -> Subscription:
             conn.execute(
                 """
                 UPDATE subscriptions
-                SET plan=?, proxy_type=?, host=?, port=?, username=?, password=?, issued_at=?, secret='',
+                SET plan=?, proxy_type=?, host=?, port=?, username=?, password=?, issued_at=?, secret=?,
                     connections_limit=?, devices_limit=?
                 WHERE id=?
                 """,
@@ -91,6 +91,7 @@ def normalize_legacy_subscription_row(row) -> Subscription:
                     username,
                     password,
                     issued_at,
+                    secret,
                     connections_limit,
                     devices_limit,
                     row["id"],
@@ -116,7 +117,7 @@ def get_latest_subscription(user_id: int) -> Optional[Subscription]:
 def get_latest_active_subscription_raw(user_id: int) -> Optional[Subscription]:
     with db_context() as conn:
         row = conn.execute(
-            f"{SUBSCRIPTION_SELECT} WHERE user_id=? AND status='active' ORDER BY id DESC LIMIT 1",
+@@ -120,51 +124,51 @@ def get_latest_active_subscription_raw(user_id: int) -> Optional[Subscription]:
             (user_id,),
         ).fetchone()
     if not row:
@@ -142,7 +143,7 @@ def insert_subscription(sub: Subscription) -> Subscription:
                 sub.port,
                 sub.username,
                 sub.password,
-                "",
+                sub.secret,
                 sub.status,
                 sub.issued_at,
                 sub.expires_at,
