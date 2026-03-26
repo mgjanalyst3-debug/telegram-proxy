@@ -25,13 +25,7 @@ def now_iso() -> str:
 def parse_dt(value: str) -> datetime:
     dt = datetime.fromisoformat(value)
     if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=UTC)
-    return dt.astimezone(UTC)
-
-
-
-def format_dt(value: str) -> str:
-    return parse_dt(value).astimezone(settings.display_tz).strftime("%d.%m.%Y %H:%M")
+@@ -36,44 +35,46 @@ def format_dt(value: str) -> str:
 
 
 
