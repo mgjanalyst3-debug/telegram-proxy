@@ -8,10 +8,15 @@ from ..models import Subscription
 from ..utils import build_password, build_username
 
 
-SUBSCRIPTION_SELECT = (
+_SUBSCRIPTION_SELECT_RAW = (
     "SELECT id, user_id, plan, proxy_type, host, port, username, password, secret, status, issued_at, expires_at, "
     "connections_limit, devices_limit, remind_24_sent_at, remind_1_sent_at, expired_notice_sent_at "
     "FROM subscriptions"
+)
+
+# Защита от случайной правки с лишней запятой, когда SQL-константа превращается в tuple.
+SUBSCRIPTION_SELECT = (
+    "".join(_SUBSCRIPTION_SELECT_RAW) if isinstance(_SUBSCRIPTION_SELECT_RAW, tuple) else _SUBSCRIPTION_SELECT_RAW
 )
 
 
@@ -38,6 +43,8 @@ def _row_to_subscription(row) -> Subscription:
         remind_1_sent_at=_row_value(row, "remind_1_sent_at", _row_value(row, "remind_72_sent_at")),
         expired_notice_sent_at=row["expired_notice_sent_at"],
     )
+
+
 
 
 
@@ -114,6 +121,18 @@ def get_latest_subscription(user_id: int) -> Optional[Subscription]:
 
 
 
+def get_latest_subscription(user_id: int) -> Optional[Subscription]:
+    with db_context() as conn:
+        row = conn.execute(
+            f"{SUBSCRIPTION_SELECT} WHERE user_id=? ORDER BY id DESC LIMIT 1",
+            (user_id,),
+        ).fetchone()
+    if not row:
+        return None
+    return normalize_legacy_subscription_row(row)
+
+
+
 def get_latest_active_subscription_raw(user_id: int) -> Optional[Subscription]:
     with db_context() as conn:
         row = conn.execute(
@@ -157,6 +176,7 @@ def insert_subscription(sub: Subscription) -> Subscription:
         row_id = cursor.lastrowid
         row = conn.execute(f"{SUBSCRIPTION_SELECT} WHERE id=?", (row_id,)).fetchone()
     return _row_to_subscription(row)
+
 
 
 
