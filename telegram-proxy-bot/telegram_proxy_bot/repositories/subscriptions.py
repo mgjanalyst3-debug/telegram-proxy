@@ -123,27 +123,12 @@ def get_latest_subscription(user_id: int) -> Optional[Subscription]:
 def get_latest_active_subscription_raw(user_id: int) -> Optional[Subscription]:
     with db_context() as conn:
         row = conn.execute(
-            f"{SUBSCRIPTION_SELECT} WHERE user_id=? AND status='active' ORDER BY id DESC LIMIT 1",
-            (user_id,),
-        ).fetchone()
-    if not row:
-        return None
-    return normalize_legacy_subscription_row(row)
-
-
-
-
-
-def get_latest_active_subscription_raw(user_id: int) -> Optional[Subscription]:
-    with db_context() as conn:
-        row = conn.execute(
 
             (user_id,),
         ).fetchone()
     if not row:
         return None
     return normalize_legacy_subscription_row(row)
-
 
 
 def insert_subscription(sub: Subscription) -> Subscription:
