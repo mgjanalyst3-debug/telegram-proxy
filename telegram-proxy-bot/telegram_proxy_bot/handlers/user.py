@@ -4,6 +4,7 @@ import logging
 
 from aiogram import Bot, F, Router
 from aiogram.filters import Command, CommandStart
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery, Message, User
 
 from ..config import settings
@@ -151,7 +152,11 @@ async def on_menu(callback: CallbackQuery) -> None:
 
 @router.callback_query(F.data == "trial")
 async def on_trial(callback: CallbackQuery) -> None:
-    await callback.answer()
+    try:
+        await callback.answer()
+    except TelegramBadRequest:
+        # Кнопка может быть нажата на старом сообщении; не падаем и продолжаем обработку.
+        pass
     await handle_trial(callback, callback.from_user)
 
 
