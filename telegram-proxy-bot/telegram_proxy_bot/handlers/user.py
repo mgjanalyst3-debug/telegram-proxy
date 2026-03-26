@@ -8,7 +8,7 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery, Message, User
 
 from ..config import settings
-from ..handlers.common import answer_screen, show_menu
+from ..handlers.common import answer_screen, safe_callback_answer, show_menu
 from ..repositories.audit import count_recent_user_actions, write_audit
 from ..repositories.tickets import clear_ticket_draft, create_ticket, create_ticket_draft, has_ticket_draft
 from ..repositories.users import has_used_trial, is_user_banned, mark_trial_used, upsert_user
@@ -47,7 +47,6 @@ async def _ensure_not_banned(target: Message | CallbackQuery, user: User) -> boo
     )
     return False
 
-
 async def handle_trial(target: Message | CallbackQuery, user: User) -> None:
     upsert_user(user.id, user.username, user.first_name)
     if not await _ensure_not_banned(target, user):
@@ -68,7 +67,9 @@ async def handle_trial(target: Message | CallbackQuery, user: User) -> None:
         )
         return
     try:
-        sub = issue_or_extend_subscription(user.id, plan="пробная подписка", hours=settings.trial_hours)
+        sub = await asyncio.to_thread(
+            issue_or_extend_subscription, user.id, plan="пробная подписка", hours=settings.trial_hours
+        )
     except Exception as exc:
         logger.exception("Не удалось выдать trial: %s", exc)
         await answer_screen(
@@ -152,11 +153,7 @@ async def on_menu(callback: CallbackQuery) -> None:
 
 @router.callback_query(F.data == "trial")
 async def on_trial(callback: CallbackQuery) -> None:
-    try:
-        await callback.answer()
-    except TelegramBadRequest:
-        # Кнопка может быть нажата на старом сообщении; не падаем и продолжаем обработку.
-        pass
+    await safe_callback_answer(callback)
     await handle_trial(callback, callback.from_user)
 
 
@@ -171,7 +168,7 @@ async def on_buy(callback: CallbackQuery) -> None:
 async def on_pay_stars(callback: CallbackQuery, bot: Bot) -> None:
     if not await _ensure_not_banned(callback, callback.from_user):
         return
-    await callback.answer()
+    await safe_callback_answer(callback)
     await send_stars_invoice(callback.message.chat.id, callback.from_user, bot, proxy_type="mtproto")
 
 
@@ -197,7 +194,7 @@ async def on_setup(callback: CallbackQuery) -> None:
 @router.callback_query(F.data == "server_status")
 async def on_server_status(callback: CallbackQuery) -> None:
     try:
-        await callback.answer("Проверяю сервер…")
+        await safe_callback_answer(callback, "Проверяю сервер…")
     except Exception:
         pass
     sub = get_active_subscription(callback.from_user.id)
@@ -278,44 +275,44 @@ async def on_ticket_message(message: Message, bot: Bot) -> None:
 
 @router.callback_query(F.data == "noop")
 async def on_noop(callback: CallbackQuery) -> None:
-    await callback.answer()
+    await safe_callback_answer(callback)
 
 
 @router.callback_query(F.data == "show_username")
 async def on_show_username(callback: CallbackQuery) -> None:
     sub = get_active_subscription(callback.from_user.id)
     if not sub:
-        await callback.answer("У вас нет активного доступа.", show_alert=True)
+        await safe_callback_answer(callback, "У вас нет активного доступа.", show_alert=True)
         return
-    await callback.answer(f"Логин: {sub.username}", show_alert=True)
+    await safe_callback_answer(callback, f"Логин: {sub.username}", show_alert=True)
 
 
 @router.callback_query(F.data == "show_password")
 async def on_show_password(callback: CallbackQuery) -> None:
     sub = get_active_subscription(callback.from_user.id)
     if not sub:
-        await callback.answer("У вас нет активного доступа.", show_alert=True)
+        await safe_callback_answer(callback, "У вас нет активного доступа.", show_alert=True)
         return
-    await callback.answer(f"Пароль: {sub.password}", show_alert=True)
+    await safe_callback_answer(callback, f"Пароль: {sub.password}", show_alert=True)
 
 
 @router.callback_query(F.data == "reissue_token")
 async def on_reissue_token(callback: CallbackQuery) -> None:
     sub = get_active_subscription(callback.from_user.id)
     if not sub:
-        await callback.answer("У вас нет активного доступа.", show_alert=True)
+        await safe_callback_answer(callback, "У вас нет активного доступа.", show_alert=True)
         return
 
     recent_reissues = count_recent_user_actions(callback.from_user.id, "user_token_reissue", hours=24)
     if recent_reissues >= 2:
-        await callback.answer("Лимит перевыпуска токена: 2 раза за 24 часа.", show_alert=True)
+        await safe_callback_answer(callback, "Лимит перевыпуска токена: 2 раза за 24 часа.", show_alert=True)
         return
 
-    new_sub = reissue_subscription_credentials(callback.from_user.id)
+    new_sub = await asyncio.to_thread(reissue_subscription_credentials, callback.from_user.id)
     if not new_sub:
-        await callback.answer("Не удалось перевыпустить токен. Попробуйте позже.", show_alert=True)
+        await safe_callback_answer(callback, "Не удалось перевыпустить токен. Попробуйте позже.", show_alert=True)
         return
 
     write_audit(callback.from_user.id, new_sub.username, "user_token_reissue", "перевыпуск из раздела Мой доступ")
-    await callback.answer("Токен перевыпущен. Старое подключение отключено.", show_alert=True)
+    await safe_callback_answer(callback, "Токен перевыпущен. Старое подключение отключено.", show_alert=True)
     await answer_screen(callback, access_text(new_sub), access_keyboard(new_sub))
