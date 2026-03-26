@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from html import escape
 import asyncio
 
 from aiogram import Bot, F, Router
@@ -242,6 +243,9 @@ async def on_ticket_message(message: Message, bot: Bot) -> None:
 
     user_name = message.from_user.full_name or "-"
     username = f"@{message.from_user.username}" if message.from_user.username else "-"
+    safe_user_name = escape(user_name)
+    safe_username = escape(username)
+    safe_text = escape(text)
     for admin_id in settings.admin_ids:
         try:
             await bot.send_message(
@@ -250,9 +254,9 @@ async def on_ticket_message(message: Message, bot: Bot) -> None:
                     "<b>🎫 Новый тикет</b>\n\n"
                     f"<b>ID:</b> <code>{ticket_id}</code>\n"
                     f"<b>User ID:</b> <code>{message.from_user.id}</code>\n"
-                    f"<b>Пользователь:</b> <code>{user_name}</code>\n"
-                    f"<b>Username:</b> <code>{username}</code>\n\n"
-                    f"<b>Сообщение:</b>\n{text}\n\n"
+                    f"<b>Пользователь:</b> <code>{safe_user_name}</code>\n"
+                    f"<b>Username:</b> <code>{safe_username}</code>\n\n"
+                    f"<b>Сообщение:</b>\n{safe_text}\n\n"
                     f"Ответ: <code>/reply {ticket_id} текст</code>\n"
                     f"Закрыть: <code>/close {ticket_id}</code>"
                 ),
@@ -264,7 +268,6 @@ async def on_ticket_message(message: Message, bot: Bot) -> None:
         f"✅ Тикет <code>#{ticket_id}</code> создан. Мы ответим в этом чате.",
         reply_markup=menu_keyboard(message.from_user.id),
     )
-
 
 @router.callback_query(F.data == "noop")
 async def on_noop(callback: CallbackQuery) -> None:
