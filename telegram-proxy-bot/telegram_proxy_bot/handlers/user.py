@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import asyncio
 
 from aiogram import Bot, F, Router
 from aiogram.filters import Command, CommandStart
@@ -278,22 +279,13 @@ async def on_noop(callback: CallbackQuery) -> None:
     await safe_callback_answer(callback)
 
 
-@router.callback_query(F.data == "show_username")
-async def on_show_username(callback: CallbackQuery) -> None:
+@router.callback_query(F.data == "show_secret")
+async def on_show_secret(callback: CallbackQuery) -> None:
     sub = get_active_subscription(callback.from_user.id)
     if not sub:
         await safe_callback_answer(callback, "У вас нет активного доступа.", show_alert=True)
         return
-    await safe_callback_answer(callback, f"Логин: {sub.username}", show_alert=True)
-
-
-@router.callback_query(F.data == "show_password")
-async def on_show_password(callback: CallbackQuery) -> None:
-    sub = get_active_subscription(callback.from_user.id)
-    if not sub:
-        await safe_callback_answer(callback, "У вас нет активного доступа.", show_alert=True)
-        return
-    await safe_callback_answer(callback, f"Пароль: {sub.password}", show_alert=True)
+    await safe_callback_answer(callback, f"MTProto secret: {sub.secret or sub.password}", show_alert=True)
 
 
 @router.callback_query(F.data == "reissue_token")
