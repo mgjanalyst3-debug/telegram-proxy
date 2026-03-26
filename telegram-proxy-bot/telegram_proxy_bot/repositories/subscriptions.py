@@ -49,7 +49,7 @@ def normalize_legacy_subscription_row(row) -> Subscription:
     password = row["password"] or build_password()
     host = row["host"] or settings.mtproto_host
     port = row["port"] or settings.mtproto_port
-    proxy_type = row["proxy_type"] or "mtproto"
+    proxy_type = "mtproto"
     issued_at = row["issued_at"] or row["expires_at"]
     plan = row["plan"]
     connections_limit = row["connections_limit"] or settings.default_connections_limit
@@ -64,12 +64,14 @@ def normalize_legacy_subscription_row(row) -> Subscription:
         or not row["password"]
         or not row["host"]
         or not row["port"]
-        or not row["proxy_type"]
+        or row["proxy_type"] != "mtproto"
         or not row["issued_at"]
         or not row["connections_limit"]
         or not row["devices_limit"]
+        or row["port"] != settings.mtproto_port
     ):
         needs_update = True
+
 
 
     if needs_update:
