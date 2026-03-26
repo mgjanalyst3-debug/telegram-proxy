@@ -5,8 +5,6 @@ from html import escape
 from zipfile import ZIP_DEFLATED, ZipFile
 
 from aiogram.types import BufferedInputFile
-from html import escape
-from zipfile import ZIP_DEFLATED, ZipFile
 
 from ..config import settings
 from ..repositories import payments as payments_repo
@@ -17,6 +15,9 @@ from ..services.subscriptions import list_active_subscriptions, list_latest_subs
 from ..utils import format_dt
 from ..db import db
 
+
+def _h(value: object) -> str:
+    return escape(str(value if value is not None else "-"))
 
 
 def get_admin_stats_text() -> str:
@@ -49,8 +50,8 @@ def format_recent_users_text(limit: int = 15) -> str:
             "\n".join(
                 [
                     f"ID: <code>{row['user_id']}</code>",
-                    f"Username: <code>{row['username'] or '-'}</code>",
-                    f"Имя: <code>{row['first_name'] or '-'}</code>",
+                    f"Username: <code>{_h(row['username'])}</code>",
+                    f"Имя: <code>{_h(row['first_name'])}</code>",
                     f"Пробная подписка: <code>{'да' if row['trial_used'] else 'нет'}</code>",
                     f"Создан: <code>{format_dt(row['created_at'])}</code>",
                 ]
@@ -73,7 +74,7 @@ def format_active_subscriptions_text(limit: int = 15) -> str:
                     f"Пользователь: <code>{sub.user_id}</code>",
                     f"Тариф: <code>{sub.plan}</code>",
                     f"Статус: <code>{sub.status}</code>",
-                    f"Логин: <code>{sub.username}</code>",
+                    f"Логин: <code>{_h(sub.username)}</code>",
                     f"Порт: <code>{sub.port}</code>",
                     f"Лимит подключений: <code>{sub.connections_limit}</code>",
                     f"Лимит устройств: <code>{sub.devices_limit}</code>",
@@ -99,8 +100,8 @@ def format_recent_payments_text(limit: int = 15) -> str:
                     f"Пользователь: <code>{row['user_id']}</code>",
                     f"Сумма: <code>{row['amount']} {row['currency']}</code>",
                     f"Статус: <code>{row['status']}</code>",
-                    f"Payload: <code>{row['payload']}</code>",
-                    f"Charge ID: <code>{charge_id}</code>",
+                    f"Payload: <code>{_h(row['payload'])}</code>",
+                    f"Charge ID: <code>{_h(charge_id)}</code>",
                     f"Выдан доступ: <code>{'да' if row['fulfilled'] else 'нет'}</code>",
                     f"Создан: <code>{format_dt(row['created_at'])}</code>",
                 ]
@@ -122,7 +123,7 @@ def format_linux_users_text(limit: int = 15) -> str:
             "\n".join(
                 [
                     f"Пользователь: <code>{sub.user_id}</code>",
-                    f"Linux-логин: <code>{sub.username}</code>",
+                    f"Linux-логин: <code>{_h(sub.username)}</code>",
                     f"Есть в системе: <code>{'да' if exists else 'нет'}</code>",
                     f"Заблокирован: <code>{'да' if locked else 'нет'}</code>",
                     f"Статус подписки: <code>{sub.status}</code>",
@@ -149,9 +150,9 @@ def format_audit_text(limit: int = 20) -> str:
                 [
                     f"Событие: <code>{row['id']}</code>",
                     f"User ID: <code>{row['user_id']}</code>",
-                    f"Логин: <code>{row['username'] or '-'}</code>",
-                    f"Действие: <code>{row['action']}</code>",
-                    f"Подробности: <code>{row['details'] or '-'}</code>",
+                    f"Логин: <code>{_h(row['username'])}</code>",
+                    f"Действие: <code>{_h(row['action'])}</code>",
+                    f"Подробности: <code>{_h(row['details'])}</code>",
                     f"Время: <code>{format_dt(row['created_at'])}</code>",
                 ]
             )
