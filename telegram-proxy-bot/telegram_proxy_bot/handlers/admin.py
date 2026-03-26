@@ -23,7 +23,6 @@ from ..services.subscriptions import (
     expire_user_subscription,
     get_active_subscription,
     issue_or_extend_subscription,
-    list_latest_subscription_snapshots,
     reissue_subscription_credentials,
     reset_trial_for_user,
 )
@@ -539,11 +538,8 @@ async def cmd_health(message: Message, bot: Bot) -> None:
         await bot.get_my_star_balance()
     except Exception:
         stars_ok = False
-    latest = list_latest_subscription_snapshots(1)
-    proxy_line = "нет данных"
-    if latest:
-        status = await get_server_status(latest[0])
-        proxy_line = server_status_text(status).splitlines()[2].replace("<b>Подключение:</b> ", "")
+    status = await get_server_status(settings.mtproto_host, settings.mtproto_port)
+    proxy_line = server_status_text(status).splitlines()[2].replace("<b>Подключение:</b> ", "")
     await message.answer(
         "<b>🩺 Health-check</b>\n\n"
         f"Бот: <code>ok</code>\n"
@@ -569,9 +565,6 @@ async def cmd_whoami(message: Message) -> None:
 async def cmd_star_balance(message: Message, bot: Bot) -> None:
     if not await _admin_only(message):
         return
-    await message.answer(await get_star_balance_text(bot))
-
-
 @router.message(Command("star_tx"))
 async def cmd_star_tx(message: Message, bot: Bot) -> None:
     if not await _admin_only(message):
