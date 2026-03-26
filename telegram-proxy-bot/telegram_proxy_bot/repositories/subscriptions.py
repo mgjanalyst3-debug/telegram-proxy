@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import Iterable, Optional
+from typing import Optional
 
 from .base import db_context
 from ..config import settings
@@ -9,19 +9,13 @@ from ..models import Subscription
 from ..utils import build_password, build_username
 
 
-_SUBSCRIPTION_SELECT_RAW = (
+SUBSCRIPTION_SELECT = (
     "SELECT id, user_id, plan, proxy_type, host, port, username, password, secret, status, issued_at, expires_at, "
     "connections_limit, devices_limit, remind_24_sent_at, remind_1_sent_at, expired_notice_sent_at "
     "FROM subscriptions"
 )
 
-# Защита от случайной правки с лишней запятой, когда SQL-константа превращается в tuple.
-SUBSCRIPTION_SELECT = (
-    "".join(_SUBSCRIPTION_SELECT_RAW) if isinstance(_SUBSCRIPTION_SELECT_RAW, tuple) else _SUBSCRIPTION_SELECT_RAW
-)
-
 _MT_SECRET_RE = re.compile(r"^[0-9a-fA-F]{32,}$")
-
 
 def _is_valid_mtproto_secret(value: str) -> bool:
     secret = (value or "").strip()
@@ -30,6 +24,7 @@ def _is_valid_mtproto_secret(value: str) -> bool:
 
 def _row_value(row, key: str, default=""):
     return row[key] if key in row.keys() else default
+
 
 def _row_to_subscription(row) -> Subscription:
     return Subscription(
@@ -53,9 +48,6 @@ def _row_to_subscription(row) -> Subscription:
     )
 
 
-
-
-
 def normalize_legacy_subscription_row(row) -> Subscription:
     needs_update = False
     username = row["username"] or build_username(row["user_id"])
@@ -64,6 +56,7 @@ def normalize_legacy_subscription_row(row) -> Subscription:
     if not _is_valid_mtproto_secret(secret):
         secret = build_password()
         needs_update = True
+
     host = row["host"] or settings.mtproto_host
     port = row["port"] or settings.mtproto_port
     proxy_type = "mtproto"
@@ -81,7 +74,6 @@ def normalize_legacy_subscription_row(row) -> Subscription:
         or not row["password"]
         or not row["host"]
         or not row["port"]
-        or (settings.mtproto_secret and secret != settings.mtproto_secret)
         or row["proxy_type"] != "mtproto"
         or not row["issued_at"]
         or not row["connections_limit"]
@@ -89,7 +81,24 @@ def normalize_legacy_subscription_row(row) -> Subscription:
         or row["port"] != settings.mtproto_port
     ):
         needs_update = True
-@@ -101,51 +112,51 @@ def normalize_legacy_subscription_row(row) -> Subscription:
+
+    if needs_update:
+        with db_context() as conn:
+            conn.execute(
+                """
+                UPDATE subscriptions
+                SET plan=?, proxy_type=?, host=?, port=?, username=?, password=?, issued_at=?,
+                    secret=?, connections_limit=?, devices_limit=?
+                WHERE id=?
+                """,
+                (
+                    plan,
+                    proxy_type,
+                    host,
+                    port,
+                    username,
+                    password,
+                    issued_at,
                     secret,
                     connections_limit,
                     devices_limit,
@@ -98,7 +107,6 @@ def normalize_legacy_subscription_row(row) -> Subscription:
             )
             row = conn.execute(f"{SUBSCRIPTION_SELECT} WHERE id=?", (row["id"],)).fetchone()
     return _row_to_subscription(row)
-
 
 
 def get_latest_subscription(user_id: int) -> Optional[Subscription]:
@@ -121,7 +129,6 @@ def get_latest_active_subscription_raw(user_id: int) -> Optional[Subscription]:
     if not row:
         return None
     return normalize_legacy_subscription_row(row)
-
 
 
 def insert_subscription(sub: Subscription) -> Subscription:
@@ -157,9 +164,6 @@ def insert_subscription(sub: Subscription) -> Subscription:
     return _row_to_subscription(row)
 
 
-
-
-
 def expire_active_subscriptions(user_id: int) -> None:
     with db_context() as conn:
         conn.execute(
@@ -174,14 +178,12 @@ def set_reminder_sent(subscription_id: int, hours_before: int, timestamp: str) -
         conn.execute(f"UPDATE subscriptions SET {column}=? WHERE id=?", (timestamp, subscription_id))
 
 
-
 def set_expired_notice_sent(subscription_id: int, timestamp: str) -> None:
     with db_context() as conn:
         conn.execute(
             "UPDATE subscriptions SET expired_notice_sent_at=? WHERE id=?",
             (timestamp, subscription_id),
         )
-
 
 
 def list_recent_latest_active_subscriptions(limit: int = 15):
@@ -197,13 +199,11 @@ def list_recent_latest_active_subscriptions(limit: int = 15):
         ).fetchall()
 
 
-
 def list_active_subscription_snapshots_for_watch():
     with db_context() as conn:
         return conn.execute(
             f"{SUBSCRIPTION_SELECT} WHERE status='active' ORDER BY id DESC"
         ).fetchall()
-
 
 
 def list_latest_subscription_snapshots(limit: int = 15):
