@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from html import escape
+
 from ..config import settings
 from ..models import Subscription
 from ..services.server_status import ServerStatus
@@ -83,7 +85,7 @@ def buy_text(selected_protocol: str = "mtproto") -> str:
 
 def subscription_text(sub: Subscription) -> str:
     connect_url = get_proxy_connect_url(sub)
-    quick_link = f"<b>Быстрая ссылка:</b>\n{connect_url}\n\n" if connect_url else ""
+    quick_link = f"<b>Быстрая ссылка:</b>\n<code>{escape(connect_url)}</code>\n\n" if connect_url else ""
     secret = sub.secret or sub.password
     return (
         f"<b>{settings.bot_brand}</b>\n\n"
@@ -102,10 +104,9 @@ def subscription_text(sub: Subscription) -> str:
     )
 
 
-
 def access_text(sub: Subscription) -> str:
     connect_url = get_proxy_connect_url(sub)
-    quick_link = f"<b>Быстрая ссылка:</b>\n{connect_url}\n\n" if connect_url else ""
+    quick_link = f"<b>Быстрая ссылка:</b>\n<code>{escape(connect_url)}</code>\n\n" if connect_url else ""
     return (
         f"<b>{settings.bot_brand}</b>\n\n"
         "<b>📦 Ваш персональный доступ</b>\n\n"
@@ -125,7 +126,7 @@ def _format_ms(value: float | None) -> str:
     if value is None:
         return "нет данных"
     if 0 < value < 1:
-        return "<1 мс"
+        return "&lt;1 мс"
     return f"{int(round(value))} мс"
 
 
