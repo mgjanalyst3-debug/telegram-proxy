@@ -104,20 +104,11 @@ def support_keyboard() -> InlineKeyboardMarkup:
 
 
 
-def buy_keyboard(selected_protocol: str = "socks5") -> InlineKeyboardMarkup:
-    normalized = selected_protocol.lower().strip()
-    if normalized not in {"socks5", "http"}:
-        normalized = "socks5"
-    socks_label = "✅ SOCKS5" if normalized == "socks5" else "SOCKS5"
-    http_label = "✅ HTTP" if normalized == "http" else "HTTP"
+def buy_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="⚙️ Выбрать протокол", callback_data="noop")],
-            [
-                InlineKeyboardButton(text=socks_label, callback_data="buy_protocol:socks5"),
-                InlineKeyboardButton(text=http_label, callback_data="buy_protocol:http"),
-            ],
-            [InlineKeyboardButton(text="⭐ Оплатить через Telegram Stars", callback_data=f"pay_stars:{normalized}")],
+            [InlineKeyboardButton(text="⚙️ Протокол: MTProto (порт 443)", callback_data="noop")],
+            [InlineKeyboardButton(text="⭐ Оплатить через Telegram Stars", callback_data="pay_stars")],
             [InlineKeyboardButton(text="🏠 Вернуться в меню", callback_data="menu")],
         ]
     )
