@@ -30,6 +30,7 @@ class Settings:
     db_path: Path
     mtproto_host: str
     mtproto_port: int
+    mtproto_secret: str
     mtproto_username_prefix: str
     mtproto_token_length: int
     linux_proxy_users_enabled: bool
@@ -58,7 +59,6 @@ def _parse_admin_ids(raw: str) -> set[int]:
     return result
 
 
-
 def load_settings() -> Settings:
     tz_name = os.getenv("DISPLAY_TZ", "Europe/Moscow")
     return Settings(
@@ -67,6 +67,7 @@ def load_settings() -> Settings:
         db_path=Path(os.getenv("DB_PATH", "proxy_bot.sqlite3")),
         mtproto_host=os.getenv("MTPROTO_HOST", os.getenv("SOCKS5_HOST", "127.0.0.1")),
         mtproto_port=int(os.getenv("MTPROTO_PORT", os.getenv("SOCKS5_PORT", "443"))),
+        mtproto_secret=os.getenv("MTPROTO_SECRET", "").strip().lower(),
         mtproto_username_prefix=os.getenv("MTPROTO_USERNAME_PREFIX", os.getenv("SOCKS5_USERNAME_PREFIX", "px")),
         mtproto_token_length=int(os.getenv("MTPROTO_TOKEN_LENGTH", os.getenv("SOCKS5_PASSWORD_LENGTH", "14"))),
         linux_proxy_users_enabled=os.getenv("LINUX_PROXY_USERS_ENABLED", "1") == "1",
