@@ -117,7 +117,7 @@ def get_latest_subscription(user_id: int) -> Optional[Subscription]:
 def get_latest_active_subscription_raw(user_id: int) -> Optional[Subscription]:
     with db_context() as conn:
         row = conn.execute(
-@@ -120,51 +124,51 @@ def get_latest_active_subscription_raw(user_id: int) -> Optional[Subscription]:
+
             (user_id,),
         ).fetchone()
     if not row:
