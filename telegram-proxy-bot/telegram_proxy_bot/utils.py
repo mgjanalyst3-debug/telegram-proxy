@@ -35,33 +35,29 @@ def format_dt(value: str) -> str:
 
 
 def build_username(user_id: int) -> str:
-    return f"{settings.socks5_username_prefix}{user_id}"
+    return f"{settings.mtproto_username_prefix}{user_id}"
 
 
 
 def build_password(length: int | None = None) -> str:
     alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789"
-    real_length = length or settings.socks5_password_length
+    real_length = length or settings.mtproto_token_length
     return "".join(secrets.choice(alphabet) for _ in range(real_length))
 
 
 
-def get_socks5_url(sub: Subscription) -> str:
+def get_mtproto_url(sub: Subscription) -> str:
     return (
-        "https://t.me/socks?"
+        "https://t.me/proxy?"
         f"server={sub.host}&port={sub.port}"
-        f"&user={quote(sub.username, safe='')}&pass={quote(sub.password, safe='')}"
+        f"&secret={quote(sub.password, safe='')}"
     )
 
 
 def get_proxy_connect_url(sub: Subscription) -> str | None:
-    if sub.proxy_type.lower() == "socks5":
-        return get_socks5_url(sub)
-    return None
+    return get_mtproto_url(sub)
 
 
 def proxy_type_label(proxy_type: str) -> str:
-    normalized = proxy_type.lower().strip()
-    if normalized == "http":
-        return "HTTP"
-    return "SOCKS5"
+    return "MTProto"
+
