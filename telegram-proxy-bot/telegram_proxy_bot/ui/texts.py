@@ -81,29 +81,6 @@ def buy_text(selected_protocol: str = "mtproto") -> str:
     )
 
 
-
-def subscription_text(sub: Subscription) -> str:
-    connect_url = get_proxy_connect_url(sub)
-    quick_link = f"<b>Быстрая ссылка:</b>\n{connect_url}\n\n" if connect_url else ""
-    return (
-        f"<b>{settings.bot_brand}</b>\n\n"
-        "Ваш персональный доступ готов.\n\n"
-        "👉 Если не удалось подключиться — нажмите «Подключить прокси» ещё раз.\n\n"
-        f"<b>Протокол:</b> {proxy_type_label(sub.proxy_type)}\n"
-        f"<b>Сервер:</b> <code>{sub.host}</code>\n"
-        f"<b>Порт:</b> <code>{sub.port}</code>\n"
-        f"<b>Логин:</b> <code>{sub.username}</code>\n"
-        f"<b>Пароль:</b> <code>{sub.password}</code>\n"
-        f"<b>Тариф:</b> <code>{sub.plan}</code>\n"
-        f"<b>Доступ до:</b> <code>{format_dt(sub.expires_at)}</code>\n"
-        f"<b>Лимит подключений:</b> <code>{sub.connections_limit}</code>\n"
-        f"<b>Лимит устройств:</b> <code>{sub.devices_limit}</code>\n\n"
-        f"{quick_link}"
-        "Это персональный доступ. Пожалуйста, не передавайте его другим людям."
-    )
-
-
-
 def subscription_text(sub: Subscription) -> str:
     connect_url = get_proxy_connect_url(sub)
     quick_link = f"<b>Быстрая ссылка:</b>\n{connect_url}\n\n" if connect_url else ""
@@ -141,7 +118,7 @@ def access_text(sub: Subscription) -> str:
         f"<b>Лимит подключений:</b> <code>{sub.connections_limit}</code>\n"
         f"<b>Лимит устройств:</b> <code>{sub.devices_limit}</code>\n\n"
         f"{quick_link}"
-        "При необходимости нажмите кнопку ниже, чтобы посмотреть MTProto secret."
+        ""
     )
 
 def _format_ms(value: float | None) -> str:
