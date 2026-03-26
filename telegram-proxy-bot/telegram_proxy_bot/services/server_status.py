@@ -4,8 +4,8 @@ import asyncio
 import re
 from dataclasses import dataclass
 from datetime import datetime
-from ..utils import now_utc
 
+from ..utils import now_utc
 
 PING_RE = re.compile(r"time[=<]([0-9]+(?:\.[0-9]+)?)")
 
@@ -20,7 +20,7 @@ class ServerStatus:
     telegram_latency_ms: float | None
     tcp_available: bool
     auth_available: bool | None
-    
+
 
 async def _measure_ping_ms(host: str, timeout_seconds: int = 2) -> float | None:
     try:
@@ -29,7 +29,14 @@ async def _measure_ping_ms(host: str, timeout_seconds: int = 2) -> float | None:
             "-c",
             "1",
             "-W",
-@@ -48,143 +43,40 @@ async def _measure_ping_ms(host: str, timeout_seconds: int = 2) -> float | None:
+            str(timeout_seconds),
+            host,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.DEVNULL,
+        )
+        stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=timeout_seconds + 1)
+    except Exception:
+        return None
 
     output = stdout.decode("utf-8", errors="ignore")
     match = PING_RE.search(output)
@@ -53,20 +60,3 @@ async def _measure_tcp_latency_ms(host: str, port: int, timeout_seconds: float =
         return True, latency_ms
     except Exception:
         return False, None
-
-
-async def get_server_status(host: str, port: int) -> ServerStatus:
-    ping_ms, (tcp_available, tcp_latency_ms) = await asyncio.gather(
-        _measure_ping_ms(host),
-        _measure_tcp_latency_ms(host, port),
-    )
-    return ServerStatus(
-        host=host,
-        port=port,
-        checked_at=now_utc(),
-        ping_ms=ping_ms,
-        tcp_latency_ms=tcp_latency_ms,
-        telegram_latency_ms=None,
-        tcp_available=tcp_available,
-        auth_available=None,
-    )
