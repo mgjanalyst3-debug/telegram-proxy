@@ -41,7 +41,8 @@ def build_password(length: int | None = None) -> str:
     # Для MTProto в ссылке нужен hex-secret, а пароль также используется для Linux-учетки.
     # Выдаем hex-строку: она валидна для MTProto и безопасна для chpasswd.
     real_length = length or settings.mtproto_token_length
-    real_length = max(16, real_length)
+    # MTProto secret должен быть минимум 16 байт = 32 hex-символа.
+    real_length = max(32, real_length)
     if real_length % 2 != 0:
         real_length += 1
     return secrets.token_hex(real_length // 2)
@@ -57,9 +58,13 @@ def _normalize_mtproto_secret(raw_secret: str) -> str:
     return ""
 
 
+def get_mtproto_secret(sub: Subscription) -> str:
+    secret_source = settings.mtproto_secret or sub.secret or sub.password
+    return _normalize_mtproto_secret(secret_source)
+
+
 def get_mtproto_url(sub: Subscription) -> str | None:
-    secret_source = sub.secret or settings.mtproto_secret or sub.password
-    secret = _normalize_mtproto_secret(secret_source)
+    secret = get_mtproto_secret(sub)
     if not secret:
         return None
     return (
@@ -67,8 +72,6 @@ def get_mtproto_url(sub: Subscription) -> str | None:
         f"server={sub.host}&port={sub.port}"
         f"&secret={quote(secret, safe='')}"
     )
-
-
 def get_proxy_connect_url(sub: Subscription) -> str | None:
     return get_mtproto_url(sub)
 
