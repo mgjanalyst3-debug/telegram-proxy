@@ -85,7 +85,11 @@ def buy_text(selected_protocol: str = "mtproto") -> str:
 
 def subscription_text(sub: Subscription) -> str:
     connect_url = get_proxy_connect_url(sub)
-    quick_link = f"<b>Быстрая ссылка:</b>\n<code>{escape(connect_url)}</code>\n\n" if connect_url else ""
+    quick_link = (
+        f"<b>Быстрая ссылка:</b>\n<code>{escape(connect_url)}</code>\n\n"
+        if connect_url
+        else "<b>Быстрая ссылка:</b> временно недоступна. Нажмите «🔄 Перевыпустить токен».\n\n"
+    )
     secret = sub.secret or sub.password
     return (
         f"<b>{settings.bot_brand}</b>\n\n"
@@ -106,7 +110,11 @@ def subscription_text(sub: Subscription) -> str:
 
 def access_text(sub: Subscription) -> str:
     connect_url = get_proxy_connect_url(sub)
-    quick_link = f"<b>Быстрая ссылка:</b>\n<code>{escape(connect_url)}</code>\n\n" if connect_url else ""
+    quick_link = (
+        f"<b>Быстрая ссылка:</b>\n<code>{escape(connect_url)}</code>\n\n"
+        if connect_url
+        else "<b>Быстрая ссылка:</b> временно недоступна. Нажмите «🔄 Перевыпустить токен».\n\n"
+    )
     return (
         f"<b>{settings.bot_brand}</b>\n\n"
         "<b>📦 Ваш персональный доступ</b>\n\n"
