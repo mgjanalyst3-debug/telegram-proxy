@@ -34,6 +34,7 @@ from ..ui.texts import (
     support_screen_text,
     trial_activated_text,
 )
+from ..utils import get_mtproto_secret
 
 logger = logging.getLogger(__name__)
 router = Router(name="user")
@@ -274,13 +275,26 @@ async def on_noop(callback: CallbackQuery) -> None:
     await safe_callback_answer(callback)
 
 
+@router.callback_query(F.data == "connect_proxy_help")
+async def on_connect_proxy_help(callback: CallbackQuery) -> None:
+    await safe_callback_answer(
+        callback,
+        "Ссылка подключения временно недоступна. Нажмите «Перевыпустить токен», чтобы создать новую ссылку.",
+        show_alert=True,
+    )
+
+
 @router.callback_query(F.data == "show_secret")
 async def on_show_secret(callback: CallbackQuery) -> None:
     sub = get_active_subscription(callback.from_user.id)
     if not sub:
         await safe_callback_answer(callback, "У вас нет активного доступа.", show_alert=True)
         return
-    await safe_callback_answer(callback, f"MTProto secret: {sub.secret or sub.password}", show_alert=True)
+    secret = get_mtproto_secret(sub)
+    if not secret:
+        await safe_callback_answer(callback, "Не удалось определить MTProto secret. Обратитесь в поддержку.", show_alert=True)
+        return
+    await safe_callback_answer(callback, f"MTProto secret: {secret}", show_alert=True)
 
 
 
