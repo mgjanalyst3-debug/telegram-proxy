@@ -7,7 +7,7 @@ from ..models import Subscription
 from ..repositories import subscriptions as subs_repo
 from ..repositories.users import reset_trial_used
 from ..services.linux_users import disable_expired_subscription_in_linux, sync_active_subscription_to_linux
-from ..utils import build_password, build_username, now_iso, now_utc, parse_dt
+from ..utils import build_mtproto_secret, build_password, build_username, now_iso, now_utc, parse_dt
 
 
 
@@ -64,7 +64,7 @@ def issue_or_extend_subscription(
         port=port,
         username=username,
         password=password,
-        secret=settings.mtproto_secret or password,
+        secret=build_mtproto_secret(),
         status="active",
         issued_at=now_iso(),
         expires_at=expires.isoformat(),
@@ -95,7 +95,7 @@ def reissue_subscription_credentials(user_id: int) -> Subscription | None:
         port=port,
         username=username,
         password=password,
-        secret=settings.mtproto_secret or password,
+        secret=build_mtproto_secret(),
         status="active",
         issued_at=now_iso(),
         expires_at=(now_utc() + timedelta(seconds=remaining_seconds)).isoformat(),
