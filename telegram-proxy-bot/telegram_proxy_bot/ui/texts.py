@@ -5,7 +5,7 @@ from html import escape
 from ..config import settings
 from ..models import Subscription
 from ..services.server_status import ServerStatus
-from ..utils import format_dt, get_proxy_connect_url, proxy_type_label
+from ..utils import format_dt, get_mtproto_secret, get_proxy_connect_url, proxy_type_label
 
 
 def welcome_text() -> str:
@@ -90,7 +90,7 @@ def subscription_text(sub: Subscription) -> str:
         if connect_url
         else "<b>Быстрая ссылка:</b> временно недоступна. Нажмите «🔄 Перевыпустить токен».\n\n"
     )
-    secret = sub.secret or sub.password
+    secret = get_mtproto_secret(sub) or "—"
     return (
         f"<b>{settings.bot_brand}</b>\n\n"
         "Ваш персональный доступ готов.\n\n"
@@ -107,14 +107,7 @@ def subscription_text(sub: Subscription) -> str:
         "Это персональный доступ. Пожалуйста, не передавайте его другим людям."
     )
 
-
 def access_text(sub: Subscription) -> str:
-    connect_url = get_proxy_connect_url(sub)
-    quick_link = (
-        f"<b>Быстрая ссылка:</b>\n<code>{escape(connect_url)}</code>\n\n"
-        if connect_url
-        else "<b>Быстрая ссылка:</b> временно недоступна. Нажмите «🔄 Перевыпустить токен».\n\n"
-    )
     return (
         f"<b>{settings.bot_brand}</b>\n\n"
         "<b>📦 Ваш персональный доступ</b>\n\n"
@@ -126,10 +119,8 @@ def access_text(sub: Subscription) -> str:
         f"<b>Доступ до:</b> <code>{format_dt(sub.expires_at)}</code>\n"
         f"<b>Лимит подключений:</b> <code>{sub.connections_limit}</code>\n"
         f"<b>Лимит устройств:</b> <code>{sub.devices_limit}</code>\n\n"
-        f"{quick_link}"
         ""
     )
-
 def _format_ms(value: float | None) -> str:
     if value is None:
         return "нет данных"
