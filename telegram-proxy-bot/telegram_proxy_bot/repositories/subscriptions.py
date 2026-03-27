@@ -6,8 +6,7 @@ from typing import Optional
 from .base import db_context
 from ..config import settings
 from ..models import Subscription
-from ..utils import build_password, build_username
-
+from ..utils import build_mtproto_secret, build_password, build_username
 
 SUBSCRIPTION_SELECT = (
     "SELECT id, user_id, plan, proxy_type, host, port, username, password, secret, status, issued_at, expires_at, "
@@ -52,13 +51,9 @@ def normalize_legacy_subscription_row(row) -> Subscription:
     needs_update = False
     username = row["username"] or build_username(row["user_id"])
     password = row["password"] or build_password()
-    # Если задан MTPROTO_SECRET, считаем его источником истины для всех подписок.
-    secret = settings.mtproto_secret or _row_value(row, "secret") or password
+    secret = _row_value(row, "secret") or password
     if not _is_valid_mtproto_secret(secret):
-        secret = build_password()
-        needs_update = True
-    elif settings.mtproto_secret and _row_value(row, "secret") != settings.mtproto_secret:
-        # Миграция старых подписок: сохраняем актуальный серверный secret в БД.
+        secret = build_mtproto_secret()
         needs_update = True
 
     host = row["host"] or settings.mtproto_host
