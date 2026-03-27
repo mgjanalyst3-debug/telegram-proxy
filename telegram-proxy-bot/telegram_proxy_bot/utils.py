@@ -48,6 +48,11 @@ def build_password(length: int | None = None) -> str:
     return secrets.token_hex(real_length // 2)
 
 
+def build_mtproto_secret() -> str:
+    # Классический MTProto secret — 16 байт (32 hex-символа).
+    return secrets.token_hex(16)
+
+
 _MT_SECRET_RE = re.compile(r"^[0-9a-fA-F]{32,}$")
 
 
@@ -59,9 +64,10 @@ def _normalize_mtproto_secret(raw_secret: str) -> str:
 
 
 def get_mtproto_secret(sub: Subscription) -> str:
-    secret_source = settings.mtproto_secret or sub.secret or sub.password
+    # Для персональной выдачи secret должен браться из подписки пользователя,
+    # а не переопределяться глобальным значением из env.
+    secret_source = sub.secret or sub.password
     return _normalize_mtproto_secret(secret_source)
-
 
 def get_mtproto_url(sub: Subscription) -> str | None:
     secret = get_mtproto_secret(sub)
